@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>n4n4ku // Autonomous Recon Agent</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Marked.js for Markdown Rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="/style.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              500: '#10b981',
+              600: '#059669',
+              900: '#064e3b',
+            },
+            cyber: {
+              bg: '#070a12',
+              card: '#0f1422',
+              border: '#1e263d',
+              accent: '#06b6d4',
+            }
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#070a12] text-slate-200 font-sans antialiased min-h-screen flex flex-col selection:bg-emerald-500 selection:text-black">
+
+  <!-- TOP HEADER & INPUT BAR -->
+  <header class="border-b border-[#1e263d] bg-[#0c101c]/90 backdrop-blur sticky top-0 z-50 px-6 py-3.5">
+    <div class="max-w-[1700px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      
+      <!-- LOGO -->
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-mono font-bold text-lg shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+          &gt;_
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-mono font-extrabold text-xl tracking-wider text-white">n4n4ku</span>
+            <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-emerald-950 text-emerald-400 border border-emerald-800">AGENTIC RECON</span>
+          </div>
+          <p class="text-xs text-slate-400">Autonomous Domain Recon &amp; Attack Surface Intelligence</p>
+        </div>
+      </div>
+
+      <!-- SCAN INPUT FORM -->
+      <form id="scanForm" class="flex items-center gap-2 w-full md:w-auto">
+        <div class="relative flex-1 md:w-96">
+          <i data-lucide="globe" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input
+            type="text"
+            id="domainInput"
+            required
+            placeholder="Target domain (cth: example.com)"
+            class="w-full bg-[#12182b] border border-[#232c47] rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 font-mono transition-all"
+          />
+        </div>
+
+        <select id="concurrencyInput" class="bg-[#12182b] border border-[#232c47] rounded-lg px-3 py-2 text-xs text-slate-300 font-mono focus:outline-none focus:border-emerald-500">
+          <option value="15">Conc: 15 (Safe)</option>
+          <option value="25" selected>Conc: 25 (Balanced)</option>
+          <option value="50">Conc: 50 (Aggressive)</option>
+        </select>
+
+        <button
+          type="submit"
+          id="startBtn"
+          class="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-5 py-2 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer"
+        >
+          <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+          <span>Launch Recon</span>
+        </button>
+      </form>
+
+      <!-- ACTIVE STATUS & TIMER -->
+      <div class="flex items-center gap-3 font-mono text-xs">
+        <div id="statusBadge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+          <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+          <span id="statusText">IDLE</span>
+        </div>
+        <div id="timerDisplay" class="text-slate-400 bg-[#12182b] px-3 py-1.5 rounded border border-[#1e263d]">
+          ⏱️ 00:00
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- METRIC CARDS -->
+  <section class="max-w-[1700px] mx-auto w-full px-6 pt-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      
+      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Discovered FQDNs</p>
+          <h3 id="metricSubdomains" class="text-2xl font-bold font-mono text-cyan-400 mt-1">0</h3>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-cyan-950/40 border border-cyan-800/50 flex items-center justify-center text-cyan-400">
+          <i data-lucide="database" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Resolved Live Hosts</p>
+          <h3 id="metricAlive" class="text-2xl font-bold font-mono text-emerald-400 mt-1">0</h3>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-emerald-950/40 border border-emerald-800/50 flex items-center justify-center text-emerald-400">
+          <i data-lucide="radio" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Active HTTP Services</p>
+          <h3 id="metricHttp" class="text-2xl font-bold font-mono text-indigo-400 mt-1">0</h3>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-indigo-950/40 border border-indigo-800/50 flex items-center justify-center text-indigo-400">
+          <i data-lucide="server" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
+        <div>
+          <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Anomalies / Risks</p>
+          <h3 id="metricAnomalies" class="text-2xl font-bold font-mono text-amber-400 mt-1">0</h3>
+        </div>
+        <div class="w-10 h-10 rounded-lg bg-amber-950/40 border border-amber-800/50 flex items-center justify-center text-amber-400">
+          <i data-lucide="shield-alert" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- 3-PANEL COCKPIT -->
+  <main class="max-w-[1700px] mx-auto w-full px-6 py-6 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- PANEL 1: PIPELINE STATUS STEPPER (Col 3) -->
+    <div class="lg:col-span-3 flex flex-col gap-4">
+      
+      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-5">
+        <h4 class="font-mono text-xs uppercase tracking-wider text-slate-400 font-bold mb-4 flex items-center gap-2">
+          <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
+          Execution Pipeline
+        </h4>
+
+        <div class="space-y-4 font-mono text-xs" id="pipelineStepper">
+          <!-- Step 1 -->
+          <div class="step-item flex items-start gap-3 text-slate-500" data-phase="SCOPE_VALIDATION">
+            <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">1</div>
+            <div>
+              <p class="font-semibold text-slate-400">Scope Guard &amp; Target Validation</p>
+              <p class="text-[11px] text-slate-500">Normalisasi FQDN &amp; boundary check</p>
+            </div>
+          </div>
+          <!-- Step 2 -->
+          <div class="step-item flex items-start gap-3 text-slate-500" data-phase="PASSIVE_RECON">
+            <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">2</div>
+            <div>
+              <p class="font-semibold text-slate-400">Apex DNS &amp; Wildcard Detection</p>
+              <p class="text-[11px] text-slate-500">NS, MX, SPF, DMARC &amp; anti-wildcard</p>
+            </div>
+          </div>
+          <!-- Step 3 -->
+          <div class="step-item flex items-start gap-3 text-slate-500" data-phase="PASSIVE_RECON_CT">
+            <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">3</div>
+            <div>
+              <p class="font-semibold text-slate-400">Certificate Transparency Logs</p>
+              <p class="text-[11px] text-slate-500">crt.sh historical certificates harvest</p>
+            </div>
+          </div>
+          <!-- Step 4 -->
+          <div class="step-item flex items-start gap-3 text-slate-500" data-phase="DNS_VERIFICATION">
+            <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">4</div>
+            <div>
+              <p class="font-semibold text-slate-400">Parallel Mass DNS Resolver</p>
+              <p class="text-[11px] text-slate-500">A/CNAME check &amp; cloud takeover triage</p>
+            </div>
+          </div>
+          <!-- Step 5 -->
+          <div class="step-item flex items-start gap-3 text-slate-500" data-phase="HTTP_PROBING">
+            <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">5</div>
+            <div>
+              <p class="font-semibold text-slate-400">HTTP/TLS Fingerprinting</p>
+              <p class="text-[11px] text-slate-500">Status, title, tech stack &amp; anomaly probe</p>
+            </div>
+          </div>
+          <!-- Step 6 -->
+          <div class="step-item flex items-start gap-3 text-slate-500" data-phase="AI_ANALYSIS">
+            <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">6</div>
+            <div>
+              <p class="font-semibold text-slate-400">AI Attack Surface Synthesis</p>
+              <p class="text-[11px] text-slate-500">ReAct reasoning &amp; actionable report</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIVE WORKER TELEMETRY -->
+      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-5">
+        <h4 class="font-mono text-xs uppercase tracking-wider text-slate-400 font-bold mb-3 flex items-center gap-2">
+          <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i>
+          Worker Telemetry
+        </h4>
+        
+        <div id="workerTelemetry" class="space-y-3 font-mono text-xs">
+          <div>
+            <div class="flex justify-between text-slate-400 mb-1">
+              <span id="activeToolName">Idle</span>
+              <span id="activeToolProgress">0%</span>
+            </div>
+            <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+              <div id="toolProgressBar" class="h-full bg-emerald-500 transition-all duration-200" style="width: 0%"></div>
+            </div>
+            <p id="activeToolItem" class="text-[11px] text-slate-500 truncate mt-1">-</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- PANEL 2: LIVE AGENT TERMINAL (Col 5) -->
+    <div class="lg:col-span-5 flex flex-col bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden min-h-[500px]">
+      
+      <!-- Terminal Header -->
+      <div class="bg-[#0a0e19] px-4 py-3 border-b border-[#1e263d] flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="flex gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-red-500/80"></span>
+            <span class="w-3 h-3 rounded-full bg-yellow-500/80"></span>
+            <span class="w-3 h-3 rounded-full bg-green-500/80"></span>
+          </div>
+          <span class="font-mono text-xs font-semibold text-slate-300 ml-2">agent.telemetry.log</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="clearLogsBtn" class="text-[11px] font-mono text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded bg-slate-800/50 hover:bg-slate-800 border border-slate-700">Clear</button>
+        </div>
+      </div>
+
+      <!-- Terminal Body -->
+      <div id="terminalStream" class="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-2.5 max-h-[620px] scrollbar-thin">
+        <div class="text-slate-500 italic">
+          [n4n4ku] System initialized. Masukkan domain target di atas dan klik 'Launch Recon'.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- PANEL 3: REALTIME ASSET MATRIX (Col 4) -->
+    <div class="lg:col-span-4 flex flex-col bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden min-h-[500px]">
+      
+      <!-- Matrix Header -->
+      <div class="bg-[#0a0e19] px-4 py-3 border-b border-[#1e263d] flex items-center justify-between">
+        <h4 class="font-mono text-xs font-semibold text-slate-300 flex items-center gap-2">
+          <i data-lucide="network" class="w-4 h-4 text-emerald-400"></i>
+          Discovered Asset Ledger
+        </h4>
+        <input
+          type="text"
+          id="assetFilter"
+          placeholder="Filter FQDN / IP..."
+          class="bg-[#12182b] border border-[#1e263d] rounded px-2.5 py-1 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-36"
+        />
+      </div>
+
+      <!-- Matrix Table -->
+      <div class="flex-1 overflow-y-auto max-h-[620px]">
+        <table class="w-full text-left font-mono text-xs">
+          <thead class="bg-[#0c101c] text-slate-400 text-[10px] uppercase border-b border-[#1e263d] sticky top-0">
+            <tr>
+              <th class="px-3 py-2">Status</th>
+              <th class="px-3 py-2">Host / Target</th>
+              <th class="px-3 py-2">IP / Info</th>
+            </tr>
+          </thead>
+          <tbody id="assetsTableBody" class="divide-y divide-[#1e263d]/50">
+            <tr>
+              <td colspan="3" class="px-4 py-8 text-center text-slate-600">
+                Belum ada aset teridentifikasi.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- REPORT DRAWER / MODAL -->
+  <section class="max-w-[1700px] mx-auto w-full px-6 pb-12">
+    <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden shadow-2xl">
+      
+      <div class="bg-[#0c101c] px-6 py-4 border-b border-[#1e263d] flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded bg-emerald-950 border border-emerald-700/50 flex items-center justify-center text-emerald-400">
+            <i data-lucide="file-text" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm text-white">AI Attack Surface Intelligence Report</h3>
+            <p class="text-xs text-slate-400">Laporan analisis risiko terpadu digenerate otonom oleh n4n4ku AI Agent</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="copyReportBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-200 border border-slate-700 transition cursor-pointer">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            <span>Copy Markdown</span>
+          </button>
+          <button id="downloadReportBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-xs font-mono text-slate-950 font-semibold transition cursor-pointer">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Download .md</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="p-6 md:p-8 overflow-x-auto min-h-[200px]" id="reportContainer">
+        <div class="text-slate-600 font-mono text-xs text-center py-12">
+          Laporan intelijen akan muncul dan ter-stream secara langsung di sini setelah probe lapangan selesai.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- APP SCRIPT -->
+  <script src="/app.js"></script>
+</body>
+</html>

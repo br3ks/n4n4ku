@@ -1,0 +1,19 @@
+services:
+  n4n4ku:
+    build: .
+    container_name: n4n4ku-recon
+    ports:
+      - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - PORT=3000
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      - LLM_MODEL=${LLM_MODEL:-combo wumbo}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - DATA_DIR=/app/data
+      - RUNNING_IN_DOCKER=true
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
