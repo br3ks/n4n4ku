@@ -41,7 +41,11 @@ async function runSelfCheck() {
   assert.strictEqual(res.id, "WSTG-INFO-02");
   assert(res.status === "PASS" || res.status === "FAIL" || res.status === "REVIEW");
   assert(typeof res.durationMs === "number");
-  console.log(`✓ WSTG-INFO-02 executed successfully -> Status: ${res.status}, Logs emitted: ${logs.length}`);
+  assert(Array.isArray(res.toolsUsed) && res.toolsUsed.length > 0, "toolsUsed harus array tidak kosong");
+  assert(typeof res.verificationStatement === "string" && res.verificationStatement.length > 20, "verificationStatement harus terisi");
+  assert(typeof res.falsePositiveAnalysis === "string" && res.falsePositiveAnalysis.length > 10, "falsePositiveAnalysis harus terisi");
+  assert(typeof res.rawOutput === "string" && res.rawOutput.length > 10, "rawOutput harus terisi");
+  console.log(`✓ WSTG-INFO-02 executed successfully -> Status: ${res.status}, Tools: ${res.toolsUsed.join(", ")}`);
 
   console.log("\n✅ ALL WSTG 4.2 SUB-AGENTS VERIFIED SUCCESSFULLY!\n");
 }

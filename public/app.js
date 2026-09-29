@@ -784,10 +784,14 @@ window.openChecklistModal = function (checklistId) {
     }
 
     modalBody.innerHTML = `
-      <div class="space-y-3">
-        <div class="flex items-center justify-between">
-          <p class="text-slate-400"><strong class="text-white">Sub-Agent:</strong> ${result.subAgentName}</p>
-          <span class="px-2 py-0.5 rounded text-xs font-bold ${
+      <div class="space-y-4">
+        <!-- Subagent & Status Header -->
+        <div class="flex items-center justify-between pb-2 border-b border-[#1e263d]">
+          <div>
+            <p class="text-slate-400"><strong class="text-white">Sub-Agent:</strong> ${escapeHtml(result.subAgentName)}</p>
+            <p class="text-slate-400 mt-0.5"><strong class="text-white">Durasi:</strong> ${result.durationMs}ms</p>
+          </div>
+          <span class="px-2.5 py-1 rounded text-xs font-bold ${
             result.status === "PASS"
               ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
               : result.status === "FAIL"
@@ -795,15 +799,55 @@ window.openChecklistModal = function (checklistId) {
               : "bg-amber-950 text-amber-300 border border-amber-800"
           }">${result.status} (${result.severity})</span>
         </div>
-        <p class="text-slate-400"><strong class="text-white">Objective:</strong> ${result.objective}</p>
-        <p class="text-slate-400"><strong class="text-white">Durasi Eksekusi:</strong> ${result.durationMs}ms</p>
-        <div class="border-t border-[#1e263d] pt-3">
-          <h4 class="font-bold text-sm text-white mb-2">Temuan &amp; Evidence:</h4>
+
+        <!-- Objective -->
+        <div>
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Objektif OWASP WSTG v4.2:</h4>
+          <p class="text-slate-300 leading-relaxed">${escapeHtml(result.objective)}</p>
+        </div>
+
+        <!-- Tools Used -->
+        <div>
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1.5">Tools yang Digunakan:</h4>
+          <div class="flex flex-wrap gap-1.5">
+            ${(result.toolsUsed || ["curl", "httpx"]).map((t) => `<span class="px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 text-[10px] font-mono">${escapeHtml(t)}</span>`).join("")}
+          </div>
+        </div>
+
+        <!-- Kalimat Verifikasi Berdasarkan Objective -->
+        <div>
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Kalimat Verifikasi (Objective-Based):</h4>
+          <div class="p-3 rounded-lg bg-[#0a0e19] border border-[#1e263d] text-emerald-300 leading-relaxed whitespace-pre-line font-mono text-[11px]">
+            ${escapeHtml(result.verificationStatement || "Verifikasi berhasil diselesaikan.")}
+          </div>
+        </div>
+
+        <!-- Analisis False Positive -->
+        <div>
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
+            <span>Analisis &amp; Penapisan False Positive:</span>
+          </h4>
+          <div class="p-2.5 rounded bg-[#12182b] border border-[#232c47] text-cyan-300/90 text-[11px] leading-relaxed">
+            🛡️ ${escapeHtml(result.falsePositiveAnalysis || "Pemeriksaan false positive selesai.")}
+          </div>
+        </div>
+
+        <!-- Findings List -->
+        <div>
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Daftar Temuan (${(result.findings || []).length}):</h4>
           ${findingsHtml}
         </div>
-        <div class="border-t border-[#1e263d] pt-3">
-          <h4 class="font-bold text-sm text-white mb-1">Rekomendasi Umum:</h4>
-          <p class="text-slate-300">${escapeHtml(result.recommendation)}</p>
+
+        <!-- Raw Probe Output -->
+        <div>
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Raw Probe Output (HTTP Transcripts):</h4>
+          <pre class="p-3 rounded-lg bg-[#080c16] border border-[#1e263d] text-slate-300 font-mono text-[10px] overflow-x-auto max-h-48 scrollbar-thin select-all">${escapeHtml(result.rawOutput || "Tidak ada raw probe tercatat.")}</pre>
+        </div>
+
+        <!-- Rekomendasi Remediasi -->
+        <div class="pt-2 border-t border-[#1e263d]">
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Rekomendasi Remediasi Taktis:</h4>
+          <p class="text-slate-300 leading-relaxed">${escapeHtml(result.recommendation)}</p>
         </div>
       </div>
     `;

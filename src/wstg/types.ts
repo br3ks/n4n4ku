@@ -19,6 +19,8 @@ export interface WstgFinding {
   evidence: string;
   severity: WstgSeverity;
   recommendation: string;
+  isVerifiedTruePositive?: boolean;
+  falsePositiveCheck?: string;
 }
 
 export interface WstgChecklistResult {
@@ -28,8 +30,12 @@ export interface WstgChecklistResult {
   objective: string;
   status: WstgStatus;
   severity: WstgSeverity;
+  toolsUsed: string[];
+  verificationStatement: string;
+  falsePositiveAnalysis: string;
   findings: WstgFinding[];
   evidenceSummary: string;
+  rawOutput: string;
   recommendation: string;
   durationMs: number;
 }
