@@ -1,5 +1,5 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
-import { RawProbeRecord, SubagentContext, checkFalsePositive, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { RawProbeRecord, SubagentContext, checkFalsePositive, evaluateFindings, formatRawOutputs, safeFetch, cachedFetch } from "./base.js";
 import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info08FingerprintFramework(ctx: SubagentContext): Promise<WstgChecklistResult> {
@@ -23,7 +23,7 @@ export async function info08FingerprintFramework(ctx: SubagentContext): Promise<
 
   // 1. Inspect Cookies and Headers on Root
   ctx.log("INFO", "Menganalisis header respon dan session cookie signatures...");
-  const rootRes = await safeFetch(ctx.targetUrl);
+  const rootRes = await cachedFetch(ctx, ctx.targetUrl);
   const setCookie = rootRes.headers.get("set-cookie") || "";
   const xPoweredBy = rootRes.headers.get("x-powered-by") || "";
 

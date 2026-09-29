@@ -58,6 +58,18 @@ export async function info03ReviewMetafiles(ctx: SubagentContext): Promise<WstgC
     } else {
       ctx.log("PASS", `robots.txt tidak memuat path sensitif kritis (${disallows.length} aturan disallow reguler).`);
     }
+
+    if (ctx.shared) {
+      disallows.forEach((p) => {
+        if (p && p.startsWith("/")) ctx.shared!.endpoints.add(p);
+      });
+      if (disallows.length > 0) {
+        ctx.broadcast?.(`Menyimpan ${disallows.length} rute dari robots.txt ke shared knowledge base.`);
+        if (ctx.interAgentNotes) {
+          ctx.interAgentNotes.push(`Published ${disallows.length} paths from robots.txt to shared memory.`);
+        }
+      }
+    }
   } else if (robotsFp.isFalsePositive) {
     ctx.log("INFO", `Respon /robots.txt diidentifikasi sebagai False Positive (${robotsFp.reason}).`);
     fpLog += ` /robots.txt: ${robotsFp.reason}`;

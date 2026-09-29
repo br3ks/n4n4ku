@@ -548,21 +548,24 @@
   </div>
 
   <!-- CHECKLIST DETAILS MODAL -->
-  <div id="checklistModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-    <div class="bg-[#0f1422] border border-[#1e263d] rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-      <div class="bg-[#0a0e19] px-6 py-4 border-b border-[#1e263d] flex items-center justify-between">
+  <div id="checklistModal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6">
+    <div class="bg-[#0b0f1a] border border-[#1e263d] rounded-2xl w-full max-w-[1550px] h-[94vh] max-h-[96vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="bg-[#070a12] px-6 py-3.5 border-b border-[#1e263d] flex items-center justify-between shrink-0">
         <div class="flex items-center gap-3">
-          <span id="modalIdBadge" class="text-xs font-mono px-2.5 py-1 rounded bg-cyan-950 text-cyan-400 border border-cyan-800 font-bold">WSTG-INFO-00</span>
+          <span id="modalIdBadge" class="text-xs font-mono px-3 py-1 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold">WSTG-INFO-00</span>
           <div>
             <h3 id="modalTitle" class="text-base font-bold text-white leading-tight">Checklist Details</h3>
-            <p class="text-[11px] text-slate-400 font-mono">OWASP WSTG v4.2 Verification &amp; Evidence Ledger</p>
+            <p id="modalSubTitle" class="text-[11px] text-slate-400 font-mono">OWASP WSTG v4.2 Technical Verification &amp; Forensic Evidence Ledger</p>
           </div>
         </div>
-        <button id="modalCloseBtn" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 cursor-pointer transition">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
+        <div class="flex items-center gap-3">
+          <span id="modalStatusBadge" class="px-2.5 py-0.5 rounded text-xs font-bold font-mono">PASS</span>
+          <button id="modalCloseBtn" class="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 cursor-pointer transition">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
       </div>
-      <div id="modalBody" class="p-6 overflow-y-auto space-y-4 font-mono text-xs scrollbar-thin">
+      <div id="modalBody" class="flex-1 overflow-hidden p-0 font-mono text-xs">
         <!-- Injected via JS -->
       </div>
     </div>

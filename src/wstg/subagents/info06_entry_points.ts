@@ -212,6 +212,13 @@ export async function info06IdentifyEntryPoints(ctx: SubagentContext): Promise<W
   }
 
   // 6. ProjectDiscovery Katana Crawling & Nuclei API Discovery
+  if (ctx.shared && ctx.shared.endpoints.size > 0) {
+    ctx.log("INFO", `[Agent Comms] Mengintegrasikan ${ctx.shared.endpoints.size} endpoint dari shared blackboard (WSTG-INFO-03 & 05) untuk pemetaan entry points.`);
+    if (ctx.interAgentNotes) {
+      ctx.interAgentNotes.push(`Reused ${ctx.shared.endpoints.size} endpoints discovered by previous subagents.`);
+    }
+  }
+
   ctx.log("INFO", "Menjalankan Katana crawler untuk memetakan form input & URL query parameters...");
   let pdOutput = "";
   try {

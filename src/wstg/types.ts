@@ -63,6 +63,7 @@ export interface WstgChecklistResult {
   evidenceSummary: string;
   rawOutput: string;
   recommendation: string;
+  interAgentNotes?: string[];
   durationMs: number;
 }
 

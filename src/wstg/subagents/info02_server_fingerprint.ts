@@ -1,5 +1,5 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
-import { RawProbeRecord, SubagentContext, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { RawProbeRecord, SubagentContext, evaluateFindings, formatRawOutputs, safeFetch, cachedFetch } from "./base.js";
 import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info02WebServerFingerprint(ctx: SubagentContext): Promise<WstgChecklistResult> {
@@ -22,10 +22,13 @@ export async function info02WebServerFingerprint(ctx: SubagentContext): Promise<
 
   // 1. Inspect Standard Response Headers
   ctx.log("INFO", "Mengirim HTTP GET probe untuk mengevaluasi header server...");
-  const rootRes = await safeFetch(ctx.targetUrl);
+  const rootRes = await cachedFetch(ctx, ctx.targetUrl);
 
   const serverHeader = rootRes.headers.get("server");
   const xPoweredBy = rootRes.headers.get("x-powered-by");
+  if (serverHeader) {
+    ctx.broadcast?.(`Web server teridentifikasi: "${serverHeader}". Disimpan ke blackboard.`);
+  }
   const xAspNetVer = rootRes.headers.get("x-aspnet-version");
   const altSvc = rootRes.headers.get("alt-svc");
 

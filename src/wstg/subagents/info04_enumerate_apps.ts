@@ -39,6 +39,26 @@ export async function info04EnumerateApplications(ctx: SubagentContext): Promise
     { path: "/portal", name: "User Portal", signature: /portal|login/i, critical: false },
   ];
 
+  if (ctx.shared) {
+    if (ctx.shared.subdomains.size > 0) {
+      ctx.log("INFO", `[Agent Comms] Memanfaatkan ${ctx.shared.subdomains.size} subdomain dari WSTG-INFO-01 untuk analisis multi-tenancy.`);
+      if (ctx.interAgentNotes) {
+        ctx.interAgentNotes.push(`Reused ${ctx.shared.subdomains.size} subdomains from WSTG-INFO-01.`);
+      }
+    }
+    // Ingest relevant paths from robots.txt / crawler
+    for (const ep of ctx.shared.endpoints) {
+      if (/admin|portal|dash|manage|sys|control/i.test(ep) && !candidatePaths.some((c) => c.path === ep)) {
+        candidatePaths.push({
+          path: ep,
+          name: `Discovered Management Endpoint (${ep})`,
+          signature: /admin|login|dashboard|auth/i,
+          critical: false,
+        });
+      }
+    }
+  }
+
   ctx.log("INFO", `Memeriksa ${candidatePaths.length} endpoint sub-aplikasi kritis...`);
 
   for (const item of candidatePaths) {

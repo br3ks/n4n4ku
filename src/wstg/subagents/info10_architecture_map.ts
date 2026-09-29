@@ -1,5 +1,5 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
-import { RawProbeRecord, SubagentContext, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { RawProbeRecord, SubagentContext, evaluateFindings, formatRawOutputs, safeFetch, cachedFetch } from "./base.js";
 import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info10MapArchitecture(ctx: SubagentContext): Promise<WstgChecklistResult> {
@@ -23,7 +23,7 @@ export async function info10MapArchitecture(ctx: SubagentContext): Promise<WstgC
 
   // 1. Inspect Edge & Cloud Headers on Root
   ctx.log("INFO", "Menganalisis header edge routing dan proteksi reverse proxy...");
-  const rootRes = await safeFetch(ctx.targetUrl);
+  const rootRes = await cachedFetch(ctx, ctx.targetUrl);
 
   const edgeHeaders = [
     { name: "Cloudflare", header: "cf-ray" },

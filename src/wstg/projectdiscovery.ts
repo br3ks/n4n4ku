@@ -9,6 +9,8 @@ export interface PdExecutionResult {
   rawOutput: string;
   findings: WstgFinding[];
   probes: RawProbeRecord[];
+  endpoints?: string[];
+  subdomains?: string[];
 }
 
 const binaryCache: Record<string, string | null | false> = {};
@@ -86,6 +88,7 @@ export async function runKatanaCrawler(
         rawOutput,
         findings,
         probes,
+        endpoints: discoveredUrls,
       };
     } catch (err: any) {
       options.log?.("WARN", `Katana binary execution failed: ${err.message}. Fallback ke native crawler.`);
@@ -148,6 +151,7 @@ export async function runKatanaCrawler(
     rawOutput,
     findings,
     probes,
+    endpoints: urlList,
   };
 }
 
@@ -358,6 +362,7 @@ export async function runSubfinderRecon(
     rawOutput: formatSubfinderTerminalOutput(domain, list),
     findings,
     probes,
+    subdomains: list,
   };
 }
 

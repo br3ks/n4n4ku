@@ -1,5 +1,5 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
-import { RawProbeRecord, SubagentContext, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { RawProbeRecord, SubagentContext, evaluateFindings, formatRawOutputs, safeFetch, cachedFetch } from "./base.js";
 import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info01SearchEngineRecon(ctx: SubagentContext): Promise<WstgChecklistResult> {
@@ -87,7 +87,7 @@ export async function info01SearchEngineRecon(ctx: SubagentContext): Promise<Wst
 
   // 2. Check X-Robots-Tag header on root URL
   ctx.log("INFO", "Memeriksa header index directive (X-Robots-Tag) pada root domain...");
-  const rootRes = await safeFetch(ctx.targetUrl);
+  const rootRes = await cachedFetch(ctx, ctx.targetUrl);
   rawProbes.push({
     method: "GET",
     url: ctx.targetUrl,
@@ -113,6 +113,16 @@ export async function info01SearchEngineRecon(ctx: SubagentContext): Promise<Wst
     const subRes = await runSubfinderRecon(ctx.targetDomain, { log: ctx.log });
     subfinderOutput = subRes.rawOutput;
     rawProbes.push(...subRes.probes);
+
+    if (subRes.subdomains && subRes.subdomains.length > 0 && ctx.shared) {
+      for (const sd of subRes.subdomains) {
+        ctx.shared.subdomains.add(sd);
+      }
+      ctx.broadcast?.(`Menemukan ${subRes.subdomains.length} subdomain via passive discovery. Disimpan ke shared blackboard.`);
+      if (ctx.interAgentNotes) {
+        ctx.interAgentNotes.push(`Published ${subRes.subdomains.length} subdomains to shared recon blackboard.`);
+      }
+    }
   } catch (err: any) {
     ctx.log("INFO", `Subfinder reconnaissance dilewati: ${err.message}`);
   }

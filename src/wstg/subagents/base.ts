@@ -1,5 +1,34 @@
 import { DetectedTechStack, WstgChecklistResult, WstgFinding, WstgInfoId, WstgSeverity, WstgStatus } from "../types.js";
 
+export interface SharedAuditMemory {
+  // Global HTTP response cache to prevent redundant fetches
+  httpCache: Map<string, { status: number; headers: Headers; text: string; ok: boolean }>;
+  // Subdomains discovered by INFO-01 or external passive sources
+  subdomains: Set<string>;
+  // Discovered URL endpoints (e.g. from robots.txt, sitemap, crawler)
+  endpoints: Set<string>;
+  // Discovered HTML form definitions
+  forms: Array<{ action: string; method: string; inputs: string[] }>;
+  // Discovered JavaScript assets
+  jsAssets: Set<string>;
+  // Metafiles cache content (robots.txt, sitemap.xml, security.txt)
+  metafiles: Record<string, string>;
+  // Inter-agent message telemetry logs
+  interAgentMessages: Array<{ from: string; message: string; timestamp: string }>;
+}
+
+export function createSharedAuditMemory(): SharedAuditMemory {
+  return {
+    httpCache: new Map(),
+    subdomains: new Set(),
+    endpoints: new Set(),
+    forms: [],
+    jsAssets: new Set(),
+    metafiles: {},
+    interAgentMessages: [],
+  };
+}
+
 export interface SubagentContext {
   targetUrl: string;
   targetDomain: string;
@@ -11,9 +40,44 @@ export interface SubagentContext {
     model?: string;
   };
   techStack?: DetectedTechStack;
+  shared?: SharedAuditMemory;
+  interAgentNotes?: string[];
+  broadcast?: (message: string) => void;
 }
 
 export type SubagentExecutor = (ctx: SubagentContext) => Promise<WstgChecklistResult>;
+
+/**
+ * Fetch with shared cache to eliminate redundant network calls across sub-agents.
+ */
+export async function cachedFetch(
+  ctx: SubagentContext,
+  url: string,
+  options: RequestInit & { timeoutMs?: number } = {}
+): Promise<{ status: number; headers: Headers; text: string; ok: boolean; cached?: boolean; error?: string }> {
+  const method = (options.method || "GET").toUpperCase();
+  const cacheKey = `${method}:${url}`;
+
+  if ((method === "GET" || method === "HEAD") && ctx.shared && ctx.shared.httpCache.has(cacheKey)) {
+    const hit = ctx.shared.httpCache.get(cacheKey)!;
+    ctx.log("INFO", `[Agent Comms] Reusing cached ${method} response for ${url} (0ms network cost).`);
+    if (ctx.interAgentNotes) {
+      ctx.interAgentNotes.push(`Reused cached ${method} response: ${url}`);
+    }
+    return { ...hit, cached: true };
+  }
+
+  const res = await safeFetch(url, options);
+  if ((method === "GET" || method === "HEAD") && ctx.shared && res.status !== 0) {
+    ctx.shared.httpCache.set(cacheKey, {
+      status: res.status,
+      headers: res.headers,
+      text: res.text,
+      ok: res.ok,
+    });
+  }
+  return res;
+}
 
 /**
  * Standard HTTP Fetch helper with timeout, custom user-agent, and error handling.

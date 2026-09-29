@@ -152,6 +152,16 @@ export async function info05ContentLeakage(ctx: SubagentContext): Promise<WstgCh
       runNucleiInfoAudit(ctx.targetUrl, tech, "exposure", { log: ctx.log }),
     ]);
 
+    if (katanaRes.endpoints && katanaRes.endpoints.length > 0 && ctx.shared) {
+      for (const ep of katanaRes.endpoints) {
+        ctx.shared.endpoints.add(ep);
+      }
+      ctx.broadcast?.(`Katana crawler mengekstraksi ${katanaRes.endpoints.length} endpoint ke shared blackboard.`);
+      if (ctx.interAgentNotes) {
+        ctx.interAgentNotes.push(`Published ${katanaRes.endpoints.length} endpoints from Katana to shared memory.`);
+      }
+    }
+
     if (katanaRes.rawOutput) pdRawOutput += `${katanaRes.rawOutput}\n\n`;
     if (nucleiRes.rawOutput) pdRawOutput += `${nucleiRes.rawOutput}\n\n`;
 

@@ -1,5 +1,5 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
-import { RawProbeRecord, SubagentContext, checkFalsePositive, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { RawProbeRecord, SubagentContext, checkFalsePositive, evaluateFindings, formatRawOutputs, safeFetch, cachedFetch } from "./base.js";
 import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info09FingerprintWebApp(ctx: SubagentContext): Promise<WstgChecklistResult> {
@@ -23,7 +23,7 @@ export async function info09FingerprintWebApp(ctx: SubagentContext): Promise<Wst
 
   // 1. Check <meta name="generator"> in HTML
   ctx.log("INFO", "Memeriksa tag meta generator pada HTML root...");
-  const rootRes = await safeFetch(ctx.targetUrl);
+  const rootRes = await cachedFetch(ctx, ctx.targetUrl);
   rawProbes.push({
     method: "GET",
     url: ctx.targetUrl,

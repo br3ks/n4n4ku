@@ -100,6 +100,7 @@ const modalIdBadge = document.getElementById("modalIdBadge");
 const modalTitle = document.getElementById("modalTitle");
 const modalBody = document.getElementById("modalBody");
 const modalCloseBtn = document.getElementById("modalCloseBtn");
+const modalStatusBadge = document.getElementById("modalStatusBadge");
 
 // --- TAB SWITCHING ---
 tabReconBtn.addEventListener("click", () => {
@@ -745,14 +746,14 @@ function handleWstgEvent(evt) {
 
 // Render Authentic Terminal Window Component (Screenshot-Ready for Evidence)
 function renderTerminalEvidence(rawText, checklistId) {
-  if (!rawText) return `<div class="text-slate-600 font-mono text-xs p-3">No network probes executed.</div>`;
+  if (!rawText) return `<div class="text-slate-500 font-mono text-xs p-6 bg-[#05070e] rounded-xl border border-[#232d47]">No network probes executed.</div>`;
 
   const escaped = escapeHtml(rawText);
   const lines = escaped.split("\n");
   const highlightedLines = lines.map((line) => {
     // Shell command line prompt: e.g. "$ curl ..."
     if (line.startsWith("$ ")) {
-      return `<span class="text-emerald-400 font-bold">$</span> <span class="text-white font-semibold">${line.slice(2)}</span>`;
+      return `<span class="text-emerald-400 font-bold select-none">$</span> <span class="text-white font-semibold">${line.slice(2)}</span>`;
     }
     // HTTP response status line: e.g. "HTTP/1.1 200 OK"
     if (line.startsWith("HTTP/1.1 ") || line.startsWith("HTTP/2 ")) {
@@ -773,7 +774,7 @@ function renderTerminalEvidence(rawText, checklistId) {
       return `<span class="text-sky-400 font-medium">${headerMatch[1]}:</span> <span class="text-slate-300">${headerMatch[2]}</span>`;
     }
     // Error line e.g. curl: (28) ...
-    if (line.startsWith("curl: ")) {
+    if (line.startsWith("curl: ") || line.includes("Failed to connect") || line.includes("Timeout")) {
       return `<span class="text-rose-400 font-bold">${line}</span>`;
     }
     // Body lines
@@ -781,30 +782,38 @@ function renderTerminalEvidence(rawText, checklistId) {
   });
 
   return `
-    <div class="terminal-mockup rounded-xl overflow-hidden border border-[#232d47] bg-[#070a12] shadow-2xl my-2">
+    <div class="h-full flex flex-col rounded-xl overflow-hidden border border-[#232d47] bg-[#05070e] shadow-2xl">
       <!-- Title Bar with macOS / Linux Terminal Window Dots -->
-      <div class="bg-[#0e1322] px-3.5 py-2.5 border-b border-[#1e263d] flex items-center justify-between select-none">
+      <div class="bg-[#0e1322] px-4 py-2.5 border-b border-[#1e263d] flex items-center justify-between shrink-0 select-none">
         <div class="flex items-center gap-2">
           <div class="flex items-center gap-1.5">
             <span class="w-3 h-3 rounded-full bg-[#ff5f56] inline-block shadow-sm"></span>
             <span class="w-3 h-3 rounded-full bg-[#ffbd2e] inline-block shadow-sm"></span>
             <span class="w-3 h-3 rounded-full bg-[#27c93f] inline-block shadow-sm"></span>
           </div>
-          <span class="font-mono text-[11px] text-slate-300 font-semibold ml-2">auditor@sal4waku: ~/recon/${checklistId.toLowerCase()}</span>
+          <span class="font-mono text-[11px] text-slate-300 font-semibold ml-2">auditor@sal4waku: ~/evidence/${checklistId.toLowerCase()}</span>
         </div>
         <div class="flex items-center gap-2 font-mono text-[10px]">
-          <span class="text-emerald-400 bg-emerald-950/70 border border-emerald-800/80 px-2 py-0.5 rounded font-semibold tracking-wider">CLI EVIDENCE</span>
+          <span class="text-emerald-400 bg-emerald-950/70 border border-emerald-800/80 px-2 py-0.5 rounded font-semibold tracking-wider hidden sm:inline-block">FORENSIC CLI EVIDENCE</span>
+          <button id="wrapToggleBtn_${checklistId}" onclick="toggleTerminalWrap('${checklistId}')" class="flex items-center gap-1 text-slate-300 hover:text-white px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer border border-slate-700">
+            <i data-lucide="wrap-text" class="w-3 h-3"></i>
+            <span>Wrap</span>
+          </button>
           <button id="copyTerminalBtn_${checklistId}" onclick="copyRawTerminal('${checklistId}')" class="flex items-center gap-1 text-slate-300 hover:text-white px-2.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer border border-slate-700">
             <i data-lucide="copy" class="w-3 h-3"></i>
-            <span id="copyTerminalLabel_${checklistId}">Copy Evidence</span>
+            <span id="copyTerminalLabel_${checklistId}">Copy</span>
+          </button>
+          <button onclick="downloadRawTerminal('${checklistId}')" class="flex items-center gap-1 text-cyan-300 hover:text-white px-2.5 py-0.5 rounded bg-cyan-950 hover:bg-cyan-900 transition cursor-pointer border border-cyan-800">
+            <i data-lucide="download" class="w-3 h-3"></i>
+            <span>.log</span>
           </button>
         </div>
       </div>
-      <!-- Terminal Output Screen -->
-      <div class="p-4 font-mono text-[11px] leading-relaxed overflow-x-auto max-h-72 scrollbar-thin bg-[#070a12] text-slate-200 select-text">
-        <pre class="font-mono whitespace-pre text-[11px] leading-normal">${highlightedLines.join("\n")}</pre>
-        <div class="mt-2.5 text-slate-500 font-mono text-[10px] flex items-center gap-1">
-          <span class="text-emerald-400 font-bold">auditor@sal4waku</span>:<span class="text-blue-400">~</span>$ <span class="w-2 h-3.5 bg-emerald-400 inline-block animate-pulse align-middle"></span>
+      <!-- Full-Height Terminal Screen -->
+      <div id="terminalScreen_${checklistId}" class="flex-1 p-4 md:p-5 font-mono text-[11.5px] leading-relaxed overflow-y-auto overflow-x-auto select-text scrollbar-thin bg-[#05070e] text-slate-200">
+        <pre id="terminalPre_${checklistId}" class="font-mono whitespace-pre text-[11.5px] leading-relaxed">${highlightedLines.join("\n")}</pre>
+        <div class="mt-4 pt-2 border-t border-slate-800/60 text-slate-500 font-mono text-[10px] flex items-center gap-1">
+          <span class="text-emerald-400 font-bold">auditor@sal4waku</span>:<span class="text-blue-400">~/evidence</span>$ <span class="w-2 h-3.5 bg-emerald-400 inline-block animate-pulse align-middle"></span>
         </div>
       </div>
     </div>
@@ -819,8 +828,37 @@ window.copyRawTerminal = function (checklistId) {
   if (label) {
     label.textContent = "Copied!";
     setTimeout(() => {
-      label.textContent = "Copy Evidence";
+      label.textContent = "Copy";
     }, 2000);
+  }
+};
+
+window.downloadRawTerminal = function (checklistId) {
+  const result = allChecklistResults[checklistId];
+  if (!result || !result.rawOutput) return;
+  const blob = new Blob([result.rawOutput], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `evidence_${checklistId.toLowerCase()}_${Date.now()}.log`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+window.toggleTerminalWrap = function (checklistId) {
+  const pre = document.getElementById(`terminalPre_${checklistId}`);
+  const btn = document.getElementById(`wrapToggleBtn_${checklistId}`);
+  if (!pre) return;
+  if (pre.classList.contains("whitespace-pre")) {
+    pre.classList.remove("whitespace-pre");
+    pre.classList.add("whitespace-pre-wrap");
+    if (btn) btn.classList.add("bg-emerald-950", "text-emerald-300", "border-emerald-700");
+  } else {
+    pre.classList.remove("whitespace-pre-wrap");
+    pre.classList.add("whitespace-pre");
+    if (btn) btn.classList.remove("bg-emerald-950", "text-emerald-300", "border-emerald-700");
   }
 };
 
@@ -845,28 +883,45 @@ window.openChecklistModal = function (checklistId) {
   modalIdBadge.textContent = checklistId;
   modalTitle.textContent = meta ? meta.title : checklistId;
 
+  if (modalStatusBadge) {
+    if (result) {
+      modalStatusBadge.textContent = result.status;
+      if (result.status === "PASS") {
+        modalStatusBadge.className = "px-2.5 py-0.5 rounded text-xs font-bold font-mono bg-emerald-950 text-emerald-300 border border-emerald-800";
+      } else if (result.status === "FAIL") {
+        modalStatusBadge.className = "px-2.5 py-0.5 rounded text-xs font-bold font-mono bg-red-950 text-red-300 border border-red-800";
+      } else {
+        modalStatusBadge.className = "px-2.5 py-0.5 rounded text-xs font-bold font-mono bg-amber-950 text-amber-300 border border-amber-800";
+      }
+    } else {
+      modalStatusBadge.textContent = "PENDING";
+      modalStatusBadge.className = "px-2.5 py-0.5 rounded text-xs font-bold font-mono bg-slate-800 text-slate-400 border border-slate-700";
+    }
+  }
+
   if (!result) {
     modalBody.innerHTML = `
-      <div class="space-y-3">
+      <div class="p-8 text-center space-y-3 font-mono">
         <p class="text-slate-400"><strong class="text-white">Sub-Agent:</strong> ${meta ? meta.name : "-"}</p>
         <p class="text-slate-400"><strong class="text-white">Objective:</strong> ${meta ? meta.objective : "-"}</p>
-        <div class="p-3 rounded bg-slate-900 border border-slate-800 text-slate-500">
+        <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 text-slate-500 max-w-md mx-auto">
           Checklist ini belum selesai dieksekusi atau masih berstatus PENDING.
         </div>
       </div>
     `;
   } else {
+    // Left column: Technical Details & Forensic Context
     let findingsHtml = "";
     if (result.findings && result.findings.length > 0) {
       findingsHtml = result.findings
         .map(
           (f) => `
-          <div class="p-3 rounded-lg bg-[#161e36] border border-[#232c47] space-y-1.5 my-2">
+          <div class="p-3 rounded-lg bg-[#141b2d] border border-[#232c47] space-y-1.5 my-2">
             <div class="flex items-center justify-between">
-              <span class="font-bold text-white">${escapeHtml(f.title)}</span>
+              <span class="font-bold text-white text-xs">${escapeHtml(f.title)}</span>
               <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-amber-300 border border-slate-700">${f.severity}</span>
             </div>
-            <p class="text-slate-300 text-[11px]">${escapeHtml(f.detail)}</p>
+            <p class="text-slate-300 text-[11px] leading-relaxed">${escapeHtml(f.detail)}</p>
             ${f.evidence ? `<div class="p-2 rounded bg-black/50 text-cyan-300 font-mono text-[10px] break-all">${escapeHtml(f.evidence)}</div>` : ""}
             <p class="text-emerald-400 text-[11px]"><strong>Rekomendasi:</strong> ${escapeHtml(f.recommendation)}</p>
           </div>
@@ -874,18 +929,17 @@ window.openChecklistModal = function (checklistId) {
         )
         .join("");
     } else {
-      findingsHtml = `<p class="text-emerald-400 italic">✅ Tidak ditemukan kerentanan atau indikator kebocoran informasi.</p>`;
+      findingsHtml = `<div class="p-3 rounded bg-emerald-950/40 border border-emerald-800/60 text-emerald-300 text-[11px] font-mono">✅ Tidak ditemukan kerentanan atau indikator kebocoran informasi.</div>`;
     }
 
     let onelinersHtml = "";
     if (result.tailoredOneliners && result.tailoredOneliners.length > 0) {
       onelinersHtml = `
-        <!-- Tailored Auditor Oneliners (ProjectDiscovery & Fuzzing Suite) -->
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
-              <span>Tailored Auditor Oneliners (ProjectDiscovery &amp; Fuzzing Suite):</span>
+              <span>Tailored Auditor Oneliners:</span>
             </h4>
             <span class="text-[10px] text-slate-500 font-mono">Siap jalan di terminal</span>
           </div>
@@ -893,7 +947,7 @@ window.openChecklistModal = function (checklistId) {
             ${result.tailoredOneliners
               .map(
                 (o) => `
-              <div class="p-2.5 rounded-lg bg-[#0a0e19] border border-[#1e263d] space-y-1.5">
+              <div class="p-2.5 rounded-lg bg-[#070b14] border border-[#1e263d] space-y-1.5">
                 <div class="flex items-center justify-between">
                   <span class="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
                     <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
@@ -915,7 +969,7 @@ window.openChecklistModal = function (checklistId) {
                   </span>
                   <button onclick="copyCommandText(\`${escapeHtml(o.command).replace(/`/g, "\\`")}\`, this)" class="text-[10px] font-mono text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center gap-1 cursor-pointer transition">
                     <i data-lucide="copy" class="w-3 h-3"></i>
-                    <span>Copy Command</span>
+                    <span>Copy</span>
                   </button>
                 </div>
                 <pre class="p-2 rounded bg-black/60 text-amber-200/90 font-mono text-[10px] overflow-x-auto select-all leading-normal whitespace-pre-wrap">${escapeHtml(o.command)}</pre>
@@ -928,91 +982,119 @@ window.openChecklistModal = function (checklistId) {
       `;
     }
 
+    let interAgentHtml = "";
+    if (result.interAgentNotes && result.interAgentNotes.length > 0) {
+      interAgentHtml = `
+        <div>
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
+            <i data-lucide="share-2" class="w-3.5 h-3.5 text-indigo-400"></i>
+            <span>Inter-Agent Knowledge Sharing (Blackboard):</span>
+          </h4>
+          <div class="p-2.5 rounded-lg bg-[#0d1224] border border-indigo-900/50 text-[11px] font-mono space-y-1">
+            ${result.interAgentNotes
+              .map(
+                (n) => `
+              <div class="flex items-center gap-1.5 text-indigo-300">
+                <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0"></span>
+                <span>${escapeHtml(n)}</span>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        </div>
+      `;
+    }
+
     modalBody.innerHTML = `
-      <div class="space-y-4">
-        <!-- Subagent & Status Header -->
-        <div class="flex items-center justify-between pb-2 border-b border-[#1e263d]">
+      <div class="h-full flex flex-col lg:grid lg:grid-cols-12 overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-[#1e263d]">
+        <!-- LEFT COLUMN (Col 5): Technical Details & Forensic Context -->
+        <div class="lg:col-span-5 h-full overflow-y-auto p-5 md:p-6 space-y-4 scrollbar-thin">
+          <!-- Subagent Header Card -->
+          <div class="p-3 rounded-xl bg-[#070b14] border border-[#1e263d] flex items-center justify-between">
+            <div>
+              <p class="text-white font-bold">${escapeHtml(result.subAgentName)}</p>
+              <p class="text-slate-400 text-[11px] mt-0.5">Durasi Eksekusi: <span class="text-emerald-400 font-mono">${result.durationMs}ms</span></p>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">Severity: ${result.severity}</span>
+            </div>
+          </div>
+
+          <!-- Inter-Agent Knowledge Sharing -->
+          ${interAgentHtml}
+
+          <!-- Skenario Adaptif -->
           <div>
-            <p class="text-slate-400"><strong class="text-white">Sub-Agent:</strong> ${escapeHtml(result.subAgentName)}</p>
-            <p class="text-slate-400 mt-0.5"><strong class="text-white">Durasi:</strong> ${result.durationMs}ms</p>
+            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
+              <i data-lucide="sparkles" class="w-3.5 h-3.5 text-cyan-400"></i>
+              <span>Skenario Audit Adaptif (Tech-Stack Context):</span>
+            </h4>
+            <div class="p-3 rounded-lg bg-[#0e1424] border border-cyan-900/50 text-cyan-200/90 text-[11px] leading-relaxed font-sans">
+              🎯 ${escapeHtml(result.adaptiveScenario || "Skenario evaluasi standar OWASP WSTG v4.2.")}
+            </div>
           </div>
-          <span class="px-2.5 py-1 rounded text-xs font-bold ${
-            result.status === "PASS"
-              ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
-              : result.status === "FAIL"
-              ? "bg-red-950 text-red-300 border border-red-800"
-              : "bg-amber-950 text-amber-300 border border-amber-800"
-          }">${result.status} (${result.severity})</span>
-        </div>
 
-        <!-- Skenario Audit Adaptif (Tech-Stack Context) -->
-        <div>
-          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
-            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-cyan-400"></i>
-            <span>Skenario Audit Adaptif (Tech-Stack Context):</span>
-          </h4>
-          <div class="p-3 rounded-lg bg-[#0e1424] border border-cyan-900/50 text-cyan-200/90 text-[11px] leading-relaxed font-sans">
-            🎯 ${escapeHtml(result.adaptiveScenario || "Skenario evaluasi standar OWASP WSTG v4.2.")}
+          <!-- Objective -->
+          <div>
+            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Objektif OWASP WSTG v4.2:</h4>
+            <p class="text-slate-300 leading-relaxed">${escapeHtml(result.objective)}</p>
+          </div>
+
+          <!-- Tools Used -->
+          <div>
+            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1.5">Tools yang Digunakan:</h4>
+            <div class="flex flex-wrap gap-1.5">
+              ${(result.toolsUsed || ["curl", "httpx"]).map((t) => `<span class="px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 text-[10px] font-mono">${escapeHtml(t)}</span>`).join("")}
+            </div>
+          </div>
+
+          <!-- Tailored Oneliners -->
+          ${onelinersHtml}
+
+          <!-- Kalimat Verifikasi -->
+          <div>
+            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Kalimat Verifikasi (Objective-Based):</h4>
+            <div class="p-3 rounded-lg bg-[#070b14] border border-[#1e263d] text-emerald-300 leading-relaxed whitespace-pre-line font-mono text-[11px]">
+              ${escapeHtml(result.verificationStatement || "Verifikasi berhasil diselesaikan.")}
+            </div>
+          </div>
+
+          <!-- Analisis False Positive -->
+          <div>
+            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
+              <span>Analisis &amp; Penapisan False Positive:</span>
+            </h4>
+            <div class="p-2.5 rounded bg-[#101524] border border-[#232c47] text-cyan-300/90 text-[11px] leading-relaxed">
+              🛡️ ${escapeHtml(result.falsePositiveAnalysis || "Pemeriksaan false positive selesai.")}
+            </div>
+          </div>
+
+          <!-- Findings List -->
+          <div>
+            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Daftar Temuan (${(result.findings || []).length}):</h4>
+            ${findingsHtml}
+          </div>
+
+          <!-- Rekomendasi Remediasi -->
+          <div class="pt-2 border-t border-[#1e263d]">
+            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Rekomendasi Remediasi Taktis:</h4>
+            <p class="text-slate-300 leading-relaxed">${escapeHtml(result.recommendation)}</p>
           </div>
         </div>
 
-        <!-- Objective -->
-        <div>
-          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Objektif OWASP WSTG v4.2:</h4>
-          <p class="text-slate-300 leading-relaxed">${escapeHtml(result.objective)}</p>
-        </div>
-
-        <!-- Tools Used -->
-        <div>
-          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1.5">Tools yang Digunakan:</h4>
-          <div class="flex flex-wrap gap-1.5">
-            ${(result.toolsUsed || ["curl", "httpx"]).map((t) => `<span class="px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 text-[10px] font-mono">${escapeHtml(t)}</span>`).join("")}
-          </div>
-        </div>
-
-        <!-- Tailored Auditor Oneliners (ffuf & dirsearch) -->
-        ${onelinersHtml}
-
-        <!-- Kalimat Verifikasi Berdasarkan Objective -->
-        <div>
-          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Kalimat Verifikasi (Objective-Based):</h4>
-          <div class="p-3 rounded-lg bg-[#0a0e19] border border-[#1e263d] text-emerald-300 leading-relaxed whitespace-pre-line font-mono text-[11px]">
-            ${escapeHtml(result.verificationStatement || "Verifikasi berhasil diselesaikan.")}
-          </div>
-        </div>
-
-        <!-- Analisis False Positive -->
-        <div>
-          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
-            <span>Analisis &amp; Penapisan False Positive:</span>
-          </h4>
-          <div class="p-2.5 rounded bg-[#12182b] border border-[#232c47] text-cyan-300/90 text-[11px] leading-relaxed">
-            🛡️ ${escapeHtml(result.falsePositiveAnalysis || "Pemeriksaan false positive selesai.")}
-          </div>
-        </div>
-
-        <!-- Findings List -->
-        <div>
-          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Daftar Temuan (${(result.findings || []).length}):</h4>
-          ${findingsHtml}
-        </div>
-
-        <!-- Raw Probe Output (Authentic Terminal Window) -->
-        <div>
-          <div class="flex items-center justify-between mb-1.5">
+        <!-- RIGHT COLUMN (Col 7): Massive Full-Height Forensic Terminal Window -->
+        <div class="lg:col-span-7 h-full flex flex-col p-4 md:p-5 overflow-hidden bg-[#070a14]">
+          <div class="flex items-center justify-between mb-2">
             <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <i data-lucide="terminal" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <i data-lucide="terminal" class="w-4 h-4 text-emerald-400"></i>
               <span>Raw CLI Evidence &amp; HTTP Transcript:</span>
             </h4>
-            <span class="text-[10px] text-slate-500 font-mono">Screenshot-ready CLI terminal</span>
+            <span class="text-[10px] text-slate-500 font-mono">100% Authentic Wire Protocol &amp; CLI Log</span>
           </div>
-          ${renderTerminalEvidence(result.rawOutput, result.id)}
-        </div>
-
-        <!-- Rekomendasi Remediasi -->
-        <div class="pt-2 border-t border-[#1e263d]">
-          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Rekomendasi Remediasi Taktis:</h4>
-          <p class="text-slate-300 leading-relaxed">${escapeHtml(result.recommendation)}</p>
+          <div class="flex-1 min-h-[400px] overflow-hidden">
+            ${renderTerminalEvidence(result.rawOutput, result.id)}
+          </div>
         </div>
       </div>
     `;
