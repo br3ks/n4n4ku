@@ -1,5 +1,6 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
 import { RawProbeRecord, SubagentContext, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info07MapExecutionPaths(ctx: SubagentContext): Promise<WstgChecklistResult> {
   const start = Date.now();
@@ -7,10 +8,14 @@ export async function info07MapExecutionPaths(ctx: SubagentContext): Promise<Wst
   const title = "Map Execution Paths Through Application";
   const subAgentName = "ExecutionPathsSubagent";
   const objective = "Memetakan alur eksekusi logika aplikasi, user journeys, transisi state (state machine), step-skipping protections, dan webhook callback endpoints.";
-  const toolsUsed = ["curl", "httpx", "Redirect Chain Tracer", "Workflow State Transition Prober", "n4n4ku AI Verification Engine"];
+  const toolsUsed = ["curl", "httpx", "ffuf", "Redirect Chain Tracer", "Workflow State Transition Prober", "n4n4ku AI Verification Engine"];
+
+  const tech = ctx.techStack || { servers: [], frameworks: [], runtimes: [], cms: [], technologies: [], isSpa: false };
+  const { scenario: adaptiveScenario, tailoredOneliners } = getAdaptiveScenario(id, tech, ctx.targetUrl);
 
   const baseUrl = ctx.targetUrl.replace(/\/$/, "");
   ctx.log("INFO", `Memulai pemetaan alur eksekusi dan proteksi state machine pada: ${baseUrl}`);
+  ctx.log("INFO", `[Adaptive Scenario] ${adaptiveScenario}`);
 
   const findings: WstgFinding[] = [];
   const rawProbes: RawProbeRecord[] = [];
@@ -146,6 +151,8 @@ export async function info07MapExecutionPaths(ctx: SubagentContext): Promise<Wst
     toolsUsed,
     verificationStatement,
     falsePositiveAnalysis: fpLog,
+    adaptiveScenario,
+    tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
     rawOutput: formatRawOutputs(rawProbes),

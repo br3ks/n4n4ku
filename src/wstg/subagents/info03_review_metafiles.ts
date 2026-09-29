@@ -1,5 +1,6 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
 import { RawProbeRecord, SubagentContext, checkFalsePositive, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info03ReviewMetafiles(ctx: SubagentContext): Promise<WstgChecklistResult> {
   const start = Date.now();
@@ -7,10 +8,14 @@ export async function info03ReviewMetafiles(ctx: SubagentContext): Promise<WstgC
   const title = "Review Webserver Metafiles";
   const subAgentName = "WebserverMetafilesSubagent";
   const objective = "Inspeksi file metadata server (robots.txt, sitemap.xml, security.txt, .well-known/*, crossdomain.xml) untuk menemukan private routes, unlinked admin paths, dan security policies.";
-  const toolsUsed = ["curl", "httpx", "RFC 9116 Validator", "Metafile Parser", "n4n4ku AI Verification Engine"];
+  const toolsUsed = ["curl", "httpx", "ffuf", "RFC 9116 Validator", "Metafile Parser", "n4n4ku AI Verification Engine"];
+
+  const tech = ctx.techStack || { servers: [], frameworks: [], runtimes: [], cms: [], technologies: [], isSpa: false };
+  const { scenario: adaptiveScenario, tailoredOneliners } = getAdaptiveScenario(id, tech, ctx.targetUrl);
 
   const baseUrl = ctx.targetUrl.replace(/\/$/, "");
   ctx.log("INFO", `Memulai review file metadata server pada target: ${baseUrl}`);
+  ctx.log("INFO", `[Adaptive Scenario] ${adaptiveScenario}`);
 
   const findings: WstgFinding[] = [];
   const rawProbes: RawProbeRecord[] = [];
@@ -165,6 +170,8 @@ export async function info03ReviewMetafiles(ctx: SubagentContext): Promise<WstgC
     toolsUsed,
     verificationStatement,
     falsePositiveAnalysis: fpLog,
+    adaptiveScenario,
+    tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
     rawOutput: formatRawOutputs(rawProbes),

@@ -1,5 +1,6 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
 import { RawProbeRecord, SubagentContext, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info02WebServerFingerprint(ctx: SubagentContext): Promise<WstgChecklistResult> {
   const start = Date.now();
@@ -9,7 +10,11 @@ export async function info02WebServerFingerprint(ctx: SubagentContext): Promise<
   const objective = "Identifikasi software web server, versi exact, patch level, host OS, active modules, dan error leakage saat menerima malformed requests.";
   const toolsUsed = ["curl", "httpx", "whatweb", "RFC Non-Compliant Method Probe", "n4n4ku AI Verification Engine"];
 
+  const tech = ctx.techStack || { servers: [], frameworks: [], runtimes: [], cms: [], technologies: [], isSpa: false };
+  const { scenario: adaptiveScenario, tailoredOneliners } = getAdaptiveScenario(id, tech, ctx.targetUrl);
+
   ctx.log("INFO", `Memulai fingerprinting web server pada target: ${ctx.targetUrl}`);
+  ctx.log("INFO", `[Adaptive Scenario] ${adaptiveScenario}`);
 
   const findings: WstgFinding[] = [];
   const rawProbes: RawProbeRecord[] = [];
@@ -172,6 +177,8 @@ export async function info02WebServerFingerprint(ctx: SubagentContext): Promise<
     toolsUsed,
     verificationStatement,
     falsePositiveAnalysis: fpLog,
+    adaptiveScenario,
+    tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
     rawOutput: formatRawOutputs(rawProbes),

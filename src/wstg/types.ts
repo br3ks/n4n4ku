@@ -23,6 +23,23 @@ export interface WstgFinding {
   falsePositiveCheck?: string;
 }
 
+export interface TailoredOneliner {
+  tool: "ffuf" | "dirsearch" | "curl" | "nmap";
+  command: string;
+  description: string;
+  category: "directory-fuzzing" | "api-discovery" | "technology-audit" | "vulnerability-probe";
+}
+
+export interface DetectedTechStack {
+  servers: string[];
+  frameworks: string[];
+  runtimes: string[];
+  cms: string[];
+  technologies: string[];
+  isSpa: boolean;
+  catchAllEnabled?: boolean;
+}
+
 export interface WstgChecklistResult {
   id: WstgInfoId;
   title: string;
@@ -33,6 +50,8 @@ export interface WstgChecklistResult {
   toolsUsed: string[];
   verificationStatement: string;
   falsePositiveAnalysis: string;
+  adaptiveScenario?: string;
+  tailoredOneliners?: TailoredOneliner[];
   findings: WstgFinding[];
   evidenceSummary: string;
   rawOutput: string;

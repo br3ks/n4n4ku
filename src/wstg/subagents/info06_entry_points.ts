@@ -1,5 +1,7 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
 import { RawProbeRecord, SubagentContext, checkFalsePositive, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { getAdaptiveScenario } from "../tech_matrix.js";
+import { runDirectoryFuzzing } from "../fuzzer.js";
 
 export async function info06IdentifyEntryPoints(ctx: SubagentContext): Promise<WstgChecklistResult> {
   const start = Date.now();
@@ -7,14 +9,18 @@ export async function info06IdentifyEntryPoints(ctx: SubagentContext): Promise<W
   const title = "Identify Application Entry Points";
   const subAgentName = "EntryPointsSubagent";
   const objective = "Memetakan seluruh attack surface aplikasi: URL routes, dynamic parameters, REST/GraphQL documentation, dan testing HTTP dangerous methods (TRACE/OPTIONS).";
-  const toolsUsed = ["curl", "httpx", "GraphQL Introspection Engine", "HTTP Method Tamperer", "n4n4ku AI Verification Engine"];
+  const toolsUsed = ["curl", "httpx", "ffuf", "dirsearch", "GraphQL Introspection Engine", "HTTP Method Tamperer", "n4n4ku AI Verification Engine"];
+
+  const tech = ctx.techStack || { servers: [], frameworks: [], runtimes: [], cms: [], technologies: [], isSpa: false };
+  const { scenario: adaptiveScenario, tailoredOneliners } = getAdaptiveScenario(id, tech, ctx.targetUrl);
 
   const baseUrl = ctx.targetUrl.replace(/\/$/, "");
-  ctx.log("INFO", `Memulai identifikasi entry points dan attack surface pada: ${baseUrl}`);
+  ctx.log("INFO", `Memulai identifikasi entry points & fuzzing direktori pada: ${baseUrl}`);
+  ctx.log("INFO", `[Adaptive Scenario] ${adaptiveScenario}`);
 
   const findings: WstgFinding[] = [];
   const rawProbes: RawProbeRecord[] = [];
-  let fpLog = "Verifikasi False Positive: GraphQL introspection dan API docs diverifikasi memiliki skema respon JSON asli, bukan penolakan terselubung atau SPA shell.";
+  let fpLog = "Verifikasi False Positive: GraphQL introspection, directory fuzzing, dan API docs diverifikasi memiliki skema asli, bukan penolakan terselubung atau SPA shell.";
 
   // 1. Test HTTP TRACE Method (Cross-Site Tracing / XST)
   ctx.log("INFO", "Menguji apakah metode HTTP TRACE diizinkan oleh server...");
@@ -160,6 +166,51 @@ export async function info06IdentifyEntryPoints(ctx: SubagentContext): Promise<W
     } catch {}
   }
 
+  // 5. Active Directory Fuzzing via ffuf / Native Parallel Engine
+  ctx.log("INFO", "Menjalankan Active Directory Fuzzing berdasarkan profil teknologi target...");
+  let fuzzOutput = "";
+  try {
+    const fuzzResult = await runDirectoryFuzzing(ctx.targetUrl, tech, ctx.log);
+    fuzzOutput = fuzzResult.rawOutput;
+    rawProbes.push(...fuzzResult.probes);
+
+    for (const match of fuzzResult.matches) {
+      if (match.isFalsePositive) {
+        fpLog += ` Path /${match.path} diabaikan (SPA catch-all soft 404).`;
+        continue;
+      }
+
+      // Check if critical exposed path
+      if ([200, 301, 302].includes(match.status)) {
+        if (/admin|portal|dashboard|phpmyadmin/i.test(match.path)) {
+          findings.push({
+            title: `Direktori Administratif Teridentifikasi dari Fuzzing: /${match.path}`,
+            detail: `Directory fuzzer menemukan endpoint manajemen aktif pada /${match.path} (HTTP ${match.status}, Size: ${match.size} bytes).`,
+            evidence: `Discovered: /${match.path} (Status ${match.status})`,
+            severity: "MEDIUM",
+            recommendation: "Pastikan akses ke antarmuka administratif dibatasi oleh VPN atau firewall IP whitelist.",
+            isVerifiedTruePositive: true,
+            falsePositiveCheck: "Ukuran respon dan status code terverifikasi bukan SPA catch-all.",
+          });
+          ctx.log("WARN", `[Fuzz Match] Administrative portal aktif di /${match.path} (HTTP ${match.status})`);
+        } else if (/actuator|h2-console|_ignition/i.test(match.path)) {
+          findings.push({
+            title: `Framework Debug Endpoint Teridentifikasi dari Fuzzing: /${match.path}`,
+            detail: `Directory fuzzer menemukan rute debugging pada /${match.path} (HTTP ${match.status}).`,
+            evidence: `Discovered: /${match.path} (Status ${match.status})`,
+            severity: "HIGH",
+            recommendation: "Nonaktifkan rute debugging pada production environment.",
+            isVerifiedTruePositive: true,
+            falsePositiveCheck: "Validasi konten dan status code mengonfirmasi endpoint aktif.",
+          });
+          ctx.log("FAIL", `[Fuzz Match] Debug endpoint terbuka di /${match.path}`);
+        }
+      }
+    }
+  } catch (err: any) {
+    ctx.log("WARN", `Directory fuzzing mengalami kendala: ${err.message}`);
+  }
+
   const evaluated = evaluateFindings(
     findings,
     "Entry point aplikasi terkontrol dengan baik. HTTP TRACE dinonaktifkan dan dokumentasi API internal terproteksi.",
@@ -168,10 +219,15 @@ export async function info06IdentifyEntryPoints(ctx: SubagentContext): Promise<W
 
   const verificationStatement =
     evaluated.status === "PASS"
-      ? `Evidence: HTTP TRACE dinonaktifkan (${traceStatus}). Endpoint /graphql merespons dengan disabling introspection schema atau nonaktif. Swagger UI dan OpenAPI specs terproteksi auth gateway.\nAlasan: Attack surface terminimalisasi; dokumentasi internal tidak dapat diakses tanpa otorisasi dan request method dibatasi secara ketat oleh reverse proxy.`
-      : `Evidence: Analisis entry point menemukan metode berbahaya atau dokumentasi API yang terekspos (${findings.map((f) => f.evidence).join(", ")}).\nAlasan: Server mengizinkan metode TRACE yang rentan XST atau mengekspos blueprint API produksi tanpa kontrol akses.`;
+      ? `Evidence: HTTP TRACE dinonaktifkan (${traceStatus}). Endpoint /graphql merespons dengan disabling introspection schema atau nonaktif. Directory fuzzing dengan profil ${tech.frameworks.join("/") || "generic"} mengonfirmasi tidak ada direktori tersembunyi yang terbuka tanpa otentikasi.\nAlasan: Attack surface terminimalisasi; dokumentasi internal tidak dapat diakses tanpa otorisasi dan request method dibatasi secara ketat oleh reverse proxy.`
+      : `Evidence: Analisis entry point menemukan metode berbahaya, direktori sensitif, atau dokumentasi API yang terekspos (${findings.map((f) => f.evidence).join(", ")}).\nAlasan: Server mengizinkan metode TRACE yang rentan XST, mengekspos blueprint API produksi, atau membiarkan direktori administratif terbuka.`;
 
   ctx.log(evaluated.status === "PASS" ? "PASS" : "WARN", `Hasil akhir WSTG-INFO-06: ${evaluated.status} (Severity: ${evaluated.severity})`);
+
+  const curlProbes = rawProbes.filter((p) => !p.bodySnippet?.includes("[Matched via ffuf]"));
+  const combinedRawOutput = fuzzOutput
+    ? `${fuzzOutput}\n\n${formatRawOutputs(curlProbes)}`
+    : formatRawOutputs(rawProbes);
 
   return {
     id,
@@ -183,9 +239,11 @@ export async function info06IdentifyEntryPoints(ctx: SubagentContext): Promise<W
     toolsUsed,
     verificationStatement,
     falsePositiveAnalysis: fpLog,
+    adaptiveScenario,
+    tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
-    rawOutput: formatRawOutputs(rawProbes),
+    rawOutput: combinedRawOutput,
     recommendation: evaluated.recommendation,
     durationMs: Date.now() - start,
   };

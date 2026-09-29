@@ -45,9 +45,38 @@ async function runSelfCheck() {
   assert(typeof res.verificationStatement === "string" && res.verificationStatement.length > 20, "verificationStatement harus terisi");
   assert(typeof res.falsePositiveAnalysis === "string" && res.falsePositiveAnalysis.length > 10, "falsePositiveAnalysis harus terisi");
   assert(typeof res.rawOutput === "string" && res.rawOutput.length > 10, "rawOutput harus terisi");
+  assert(typeof res.adaptiveScenario === "string" && res.adaptiveScenario.length > 10, "adaptiveScenario harus terisi");
+  assert(Array.isArray(res.tailoredOneliners) && res.tailoredOneliners.length > 0, "tailoredOneliners harus terisi");
   console.log(`✓ WSTG-INFO-02 executed successfully -> Status: ${res.status}, Tools: ${res.toolsUsed.join(", ")}`);
+  console.log(`✓ Adaptive Scenario: ${res.adaptiveScenario.slice(0, 60)}...`);
+  console.log(`✓ Tailored Oneliners: ${res.tailoredOneliners.length} commands generated`);
 
-  console.log("\n✅ ALL WSTG 4.2 SUB-AGENTS VERIFIED SUCCESSFULLY!\n");
+  // Test Tech Stack Detection
+  console.log("\nTesting Tech Stack Detection Engine...");
+  const { detectTechStack } = await import("../src/wstg/tech_matrix.js");
+  const tech = detectTechStack(
+    new Headers({ server: "nginx/1.24.0", "x-powered-by": "Next.js", "set-cookie": "laravel_session=xyz;" }),
+    '<div id="__NEXT_DATA__"></div>'
+  );
+  assert(tech.servers.some((s) => s.includes("nginx")), "Nginx harus terdeteksi");
+  assert(tech.frameworks.includes("Next.js"), "Next.js harus terdeteksi");
+  assert(tech.frameworks.includes("Laravel"), "Laravel harus terdeteksi");
+  assert.strictEqual(tech.isSpa, true, "isSpa harus true untuk Next.js");
+  console.log("✓ Tech Stack Detection verified successfully:", tech);
+
+  // Test Fuzzer Helpers
+  console.log("\nTesting Fuzzer Wordlist & ffuf Engine...");
+  const { buildAdaptiveWordlist, checkFfufAvailable } = await import("../src/wstg/fuzzer.js");
+  const words = buildAdaptiveWordlist(tech);
+  assert(words.includes("admin"), "Wordlist harus memuat admin");
+  assert(words.includes("_next/static"), "Wordlist Next.js harus memuat _next/static");
+  assert(words.includes("_ignition/health-check"), "Wordlist Laravel harus memuat _ignition");
+  console.log(`✓ Adaptive Wordlist generated: ${words.length} items`);
+
+  const ffufBin = await checkFfufAvailable();
+  console.log(`✓ ffuf binary status on host: ${ffufBin ? `Installed (${ffufBin})` : "Not installed (will use native parallel fallback)"}`);
+
+  console.log("\n✅ ALL WSTG 4.2 SUB-AGENTS & ENHANCED ENGINES VERIFIED SUCCESSFULLY!\n");
 }
 
 runSelfCheck().catch((err) => {

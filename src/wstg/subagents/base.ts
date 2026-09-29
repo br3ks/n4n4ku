@@ -1,4 +1,4 @@
-import { WstgChecklistResult, WstgFinding, WstgInfoId, WstgSeverity, WstgStatus } from "../types.js";
+import { DetectedTechStack, WstgChecklistResult, WstgFinding, WstgInfoId, WstgSeverity, WstgStatus } from "../types.js";
 
 export interface SubagentContext {
   targetUrl: string;
@@ -10,6 +10,7 @@ export interface SubagentContext {
     baseUrl?: string;
     model?: string;
   };
+  techStack?: DetectedTechStack;
 }
 
 export type SubagentExecutor = (ctx: SubagentContext) => Promise<WstgChecklistResult>;

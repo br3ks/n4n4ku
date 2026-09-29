@@ -1,5 +1,6 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
 import { RawProbeRecord, SubagentContext, checkFalsePositive, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info09FingerprintWebApp(ctx: SubagentContext): Promise<WstgChecklistResult> {
   const start = Date.now();
@@ -7,10 +8,14 @@ export async function info09FingerprintWebApp(ctx: SubagentContext): Promise<Wst
   const title = "Fingerprint Web Application";
   const subAgentName = "AppFingerprintSubagent";
   const objective = "Identifikasi Commercial Off-The-Shelf (COTS) & CMS (WordPress, Drupal, Joomla, Ghost, Strapi, Keycloak) serta evaluasi file dokumentasi bawaan dan REST API user enumeration.";
-  const toolsUsed = ["curl", "httpx", "whatweb", "COTS & CMS Signature Scanner", "REST API User Enumerator", "n4n4ku AI Verification Engine"];
+  const toolsUsed = ["curl", "httpx", "ffuf", "whatweb", "COTS & CMS Signature Scanner", "REST API User Enumerator", "n4n4ku AI Verification Engine"];
+
+  const tech = ctx.techStack || { servers: [], frameworks: [], runtimes: [], cms: [], technologies: [], isSpa: false };
+  const { scenario: adaptiveScenario, tailoredOneliners } = getAdaptiveScenario(id, tech, ctx.targetUrl);
 
   const baseUrl = ctx.targetUrl.replace(/\/$/, "");
   ctx.log("INFO", `Memulai fingerprinting CMS dan aplikasi COTS pada: ${baseUrl}`);
+  ctx.log("INFO", `[Adaptive Scenario] ${adaptiveScenario}`);
 
   const findings: WstgFinding[] = [];
   const rawProbes: RawProbeRecord[] = [];
@@ -142,6 +147,8 @@ export async function info09FingerprintWebApp(ctx: SubagentContext): Promise<Wst
     toolsUsed,
     verificationStatement,
     falsePositiveAnalysis: fpLog,
+    adaptiveScenario,
+    tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
     rawOutput: formatRawOutputs(rawProbes),

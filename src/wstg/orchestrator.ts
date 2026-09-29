@@ -1,7 +1,9 @@
 import pLimit from "p-limit";
-import { WstgChecklistResult, WstgEvent, WstgFinding } from "./types.js";
+import { DetectedTechStack, WstgChecklistResult, WstgEvent, WstgFinding } from "./types.js";
 import { WstgAuditSession, saveAuditSessionToDisk } from "./store.js";
 import { WSTG_INFO_SUBAGENTS } from "./subagents/index.js";
+import { detectTechStack } from "./tech_matrix.js";
+import { safeFetch } from "./subagents/base.js";
 
 export interface WstgLlmConfig {
   apiKey?: string;
@@ -13,6 +15,14 @@ export class WstgAuditOrchestrator {
   private session: WstgAuditSession;
   private llmConfig: WstgLlmConfig;
   private concurrency: number;
+  private techStack: DetectedTechStack = {
+    servers: [],
+    frameworks: [],
+    runtimes: [],
+    cms: [],
+    technologies: [],
+    isSpa: false,
+  };
 
   constructor(session: WstgAuditSession, llmConfig: WstgLlmConfig, concurrency = 2) {
     this.session = session;
@@ -29,6 +39,20 @@ export class WstgAuditOrchestrator {
     const total = WSTG_INFO_SUBAGENTS.length;
 
     console.log(`\n[WSTG Orchestrator] Starting WSTG 4.2 Information Gathering Audit for: ${this.session.targetUrl}`);
+    
+    // Rapid pre-audit tech stack discovery
+    try {
+      const probeRes = await safeFetch(this.session.targetUrl, { timeoutMs: 5000 });
+      this.techStack = detectTechStack(probeRes.headers, probeRes.text);
+      const stackSummary = [
+        ...this.techStack.servers,
+        ...this.techStack.frameworks,
+        ...this.techStack.cms,
+        ...this.techStack.runtimes.slice(0, 1),
+      ].join(", ") || "Generic Web Application";
+      console.log(`[WSTG Orchestrator] Detected Target Tech Stack: ${stackSummary}`);
+    } catch {}
+
     this.emit({
       type: "wstg_start",
       targetUrl: this.session.targetUrl,
@@ -88,6 +112,7 @@ export class WstgAuditOrchestrator {
             targetDomain: this.session.targetDomain,
             log,
             llmConfig: this.llmConfig,
+            techStack: this.techStack,
           });
 
           this.session.results[id] = result;
@@ -196,13 +221,28 @@ export class WstgAuditOrchestrator {
     const mediumFindings = this.session.findings.filter((f) => f.severity === "MEDIUM" && f.isVerifiedTruePositive !== false);
     const lowFindings = this.session.findings.filter((f) => (f.severity === "LOW" || f.severity === "INFORMATIONAL") && f.isVerifiedTruePositive !== false);
 
+    const techSummaryStr = [
+      ...this.techStack.servers,
+      ...this.techStack.frameworks,
+      ...this.techStack.cms,
+      ...this.techStack.runtimes,
+      ...this.techStack.technologies,
+    ].join(", ") || "Generic Modern Web Application";
+
     const detailedChecklistsContext = resultsArray
       .map((r) => {
+        const onelinersText = (r.tailoredOneliners || [])
+          .map((o) => `  * [${o.tool.toUpperCase()}] ${o.description}: \`${o.command}\``)
+          .join("\n");
+
         return `#### Checklist ID: ${r.id} - ${r.title}
 - **Sub-Agent**: ${r.subAgentName}
 - **Status Evaluasi**: ${r.status} (Severity: ${r.severity})
 - **Tools yang Digunakan**: ${r.toolsUsed.join(", ")}
 - **Objective OWASP WSTG**: ${r.objective}
+- **Skenario Adaptif**: ${r.adaptiveScenario || "Skenario audit standar."}
+- **Tailored Oneliners**:
+${onelinersText || "  * N/A"}
 - **Kalimat Verifikasi**:
   ${r.verificationStatement}
 - **Analisis False Positive**:
@@ -224,11 +264,21 @@ ${r.rawOutput.slice(0, 800)}
     const prompt = `Anda adalah Principal Web Application Security Auditor & OWASP WSTG Specialist.
 Buat laporan audit keamanan Information Gathering resmi berstandar **OWASP WSTG v4.2** untuk target: **${this.session.targetUrl}** (${this.session.targetDomain}).
 
+### TARGET TECHNOLOGY PROFILE:
+- Web Servers / CDNs: ${this.techStack.servers.join(", ") || "None/Generic"}
+- Frameworks: ${this.techStack.frameworks.join(", ") || "None/Generic"}
+- Runtimes / Languages: ${this.techStack.runtimes.join(", ") || "None/Generic"}
+- CMS / COTS: ${this.techStack.cms.join(", ") || "None"}
+- Identified Technologies: ${this.techStack.technologies.join(", ") || "None"}
+- Architecture: ${this.techStack.isSpa ? "Single Page Application (SPA / Dynamic Rendering)" : "Traditional Server-Rendered / Multi-Page"}
+
 ### PANDUAN WAJIB & STRICT RULES:
 1. SEMUA 10 CHECKLIST (WSTG-INFO-01 s/d WSTG-INFO-10) WAJIB DIMASUKKAN TANPA TERLEWAT SATU PUN.
 2. Setiap checklist wajib mencantumkan:
    - Nama Sub-Agent dan Status
-   - Daftar Tools yang Digunakan
+   - Daftar Tools yang Digunakan (termasuk ffuf & dirsearch pada checklist terkait)
+   - Skenario Audit Adaptif (disesuaikan dengan tech stack target di atas)
+   - Tailored Auditor Oneliners (perintah siap jalan ffuf, dirsearch, atau curl)
    - Objective OWASP WSTG v4.2
    - Kalimat Verifikasi Berdasarkan Objective (Evidence & Alasan)
    - Analisis False Positive (Evaluasi bahwa temuan bukan SPA catch-all, soft 404, atau WAF challenge)
@@ -310,7 +360,7 @@ Tulis laporan dalam format Markdown yang sangat rapi, mendalam, berwibawa, dan p
     }
 
     // Comprehensive Heuristic Fallback Report with ALL 10 Checklists
-    const fallbackReport = this.generateDetailedHeuristicReport(resultsArray, passCount, failCount, reviewCount);
+    const fallbackReport = this.generateDetailedHeuristicReport(resultsArray, passCount, failCount, reviewCount, techSummaryStr);
     const words = fallbackReport.split(" ");
     for (let i = 0; i < words.length; i += 8) {
       const chunk = words.slice(i, i + 8).join(" ") + " ";
@@ -324,19 +374,21 @@ Tulis laporan dalam format Markdown yang sangat rapi, mendalam, berwibawa, dan p
     results: WstgChecklistResult[],
     passCount: number,
     failCount: number,
-    reviewCount: number
+    reviewCount: number,
+    techSummaryStr: string
   ): string {
     return `# Laporan Audit Keamanan OWASP WSTG v4.2: Information Gathering
 **Target**: \`${this.session.targetUrl}\` (\`${this.session.targetDomain}\`)  
 **Metodologi**: OWASP Web Security Testing Guide (WSTG) v4.2  
 **Kategori**: Information Gathering (WSTG-INFO-01 s/d WSTG-INFO-10)  
 **Evaluator**: n4n4ku Autonomous Audit Agent & 10 Dedicated Sub-Agents  
+**Detected Stack**: \`${techSummaryStr}\`  
 
 ---
 
 ## 1. Ringkasan Eksekutif & Postur Perimeter
 
-Audit reconnaissance dan pengujian permukaan serangan telah dieksekusi secara otomatis dan mendalam. Setiap kontrol dievaluasi berdasarkan kriteria PASS / FAIL resmi OWASP WSTG v4.2 serta diverifikasi melalui engine penapisan False Positive:
+Audit reconnaissance dan pengujian permukaan serangan telah dieksekusi secara otomatis dan mendalam. Setiap kontrol dievaluasi berdasarkan kriteria PASS / FAIL resmi OWASP WSTG v4.2, disesuaikan dengan skenario adaptif profil teknologi target, serta diverifikasi melalui engine penapisan False Positive:
 
 - **Total Checklist**: \`${results.length}\` kontrol pengujian
 - **Status Kelulusan (PASS)**: \`${passCount}\` kontrol memenuhi standar hardening
@@ -345,20 +397,33 @@ Audit reconnaissance dan pengujian permukaan serangan telah dieksekusi secara ot
 
 ---
 
-## 2. Matriks Rekonsiliasi OWASP WSTG v4.2
+## 2. Profil Teknologi Target (Tech Stack Intelligence)
+
+| Kategori | Komponen Terdeteksi |
+|---|---|
+| **Web Server / Reverse Proxy** | ${this.techStack.servers.join(", ") || "Generic/Hidden"} |
+| **Framework Web** | ${this.techStack.frameworks.join(", ") || "Standard/Multi-stack"} |
+| **Runtime / Bahasa** | ${this.techStack.runtimes.join(", ") || "Unspecified"} |
+| **CMS / COTS** | ${this.techStack.cms.join(", ") || "Custom Application"} |
+| **Teknologi Pendukung** | ${this.techStack.technologies.join(", ") || "Standard Web"} |
+| **Model Arsitektur** | ${this.techStack.isSpa ? "Single Page Application (SPA / Dynamic Hydration)" : "Multi-Page / Traditional Server Rendering"} |
+
+---
+
+## 3. Matriks Rekonsiliasi OWASP WSTG v4.2
 
 | WSTG ID | Checklist Title | Status | Severity | Tools Digunakan | False Positive Validation |
 |---|---|---|---|---|---|
 ${results
   .map(
     (r) =>
-      `| **${r.id}** | ${r.title} | ${r.status === "PASS" ? "✅ PASS" : r.status === "FAIL" ? "❌ FAIL" : "⚠️ REVIEW"} | \`${r.severity}\` | \`${r.toolsUsed.slice(0, 2).join(", ")}\` | ${r.falsePositiveAnalysis.slice(0, 50)}... |`
+      `| **${r.id}** | ${r.title} | ${r.status === "PASS" ? "✅ PASS" : r.status === "FAIL" ? "❌ FAIL" : "⚠️ REVIEW"} | \`${r.severity}\` | \`${r.toolsUsed.slice(0, 3).join(", ")}\` | ${r.falsePositiveAnalysis.slice(0, 45)}... |`
   )
   .join("\n")}
 
 ---
 
-## 3. Rincian Lengkap Seluruh Checklist (WSTG-INFO-01 s/d 10)
+## 4. Rincian Lengkap Seluruh Checklist (WSTG-INFO-01 s/d 10)
 
 ${results
   .map((r) => {
@@ -376,6 +441,19 @@ ${results
             .join("\n\n")
         : "  *✅ Tidak ditemukan temuan kerentanan atau indikator kebocoran informasi.*";
 
+    const onelinersBlock =
+      r.tailoredOneliners && r.tailoredOneliners.length > 0
+        ? r.tailoredOneliners
+            .map(
+              (o) =>
+                `* **${o.tool.toUpperCase()}** - ${o.description}:
+\`\`\`bash
+${o.command}
+\`\`\``
+            )
+            .join("\n\n")
+        : "  *Tidak ada perintah tambahan.*";
+
     return `### [${r.id}] ${r.title}
 
 - **Sub-Agent Penguji**: \`${r.subAgentName}\`
@@ -384,21 +462,27 @@ ${results
 - **Tools yang Digunakan**: ${r.toolsUsed.map((t) => `\`${t}\``).join(", ")}
 - **Objektif Uji**: ${r.objective}
 
-#### A. Kalimat Verifikasi Berdasarkan Objective
+#### A. Skenario Audit Adaptif (Tech-Stack Context)
+> ${r.adaptiveScenario || "Skenario standar OWASP WSTG v4.2 Information Gathering."}
+
+#### B. Kalimat Verifikasi Berdasarkan Objective
 > ${r.verificationStatement.replace(/\n/g, "\n> ")}
 
-#### B. Analisis & Penapisan False Positive
+#### C. Analisis & Penapisan False Positive
 ${r.falsePositiveAnalysis}
 
-#### C. Temuan & Analisis Kerentanan
+#### D. Tailored Auditor Oneliners (ffuf & dirsearch)
+${onelinersBlock}
+
+#### E. Temuan & Analisis Kerentanan
 ${findingsBlock}
 
-#### D. Raw Probe Output & HTTP Transcripts
+#### F. Raw Probe Output & HTTP Transcripts
 \`\`\`http
 ${r.rawOutput}
 \`\`\`
 
-#### E. Langkah Remediasi Taktis
+#### G. Langkah Remediasi Taktis
 ${r.recommendation}
 `;
   })
@@ -406,7 +490,7 @@ ${r.recommendation}
 
 ---
 
-## 4. Prioritas Remediasi Strategis
+## 5. Prioritas Remediasi Strategis
 
 1. **Sanitasi Banner & Respon Header**:
    Konfigurasikan reverse proxy / web server untuk menyamarkan nilai header \`Server\`, \`X-Powered-By\`, dan \`X-AspNet-Version\`. Hilangkan seluruh stack trace dari halaman error 400, 404, dan 500.

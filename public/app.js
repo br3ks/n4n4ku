@@ -824,6 +824,19 @@ window.copyRawTerminal = function (checklistId) {
   }
 };
 
+window.copyCommandText = function (cmdText, btn) {
+  if (!cmdText) return;
+  navigator.clipboard.writeText(cmdText);
+  if (btn) {
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = `<span class="text-emerald-400 font-bold">Copied!</span>`;
+    setTimeout(() => {
+      btn.innerHTML = originalHtml;
+      if (typeof lucide !== "undefined") lucide.createIcons();
+    }, 2000);
+  }
+};
+
 // Open Modal Details for a Checklist
 window.openChecklistModal = function (checklistId) {
   const meta = CHECKLIST_METADATA.find((m) => m.id === checklistId);
@@ -864,6 +877,49 @@ window.openChecklistModal = function (checklistId) {
       findingsHtml = `<p class="text-emerald-400 italic">✅ Tidak ditemukan kerentanan atau indikator kebocoran informasi.</p>`;
     }
 
+    let onelinersHtml = "";
+    if (result.tailoredOneliners && result.tailoredOneliners.length > 0) {
+      onelinersHtml = `
+        <!-- Tailored Auditor Oneliners (ffuf & dirsearch) -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
+              <span>Tailored Auditor Oneliners (ffuf &amp; dirsearch):</span>
+            </h4>
+            <span class="text-[10px] text-slate-500 font-mono">Siap jalan di terminal</span>
+          </div>
+          <div class="space-y-2">
+            ${result.tailoredOneliners
+              .map(
+                (o) => `
+              <div class="p-2.5 rounded-lg bg-[#0a0e19] border border-[#1e263d] space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <span class="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
+                      o.tool === "ffuf"
+                        ? "bg-amber-950 text-amber-300 border border-amber-800"
+                        : o.tool === "dirsearch"
+                        ? "bg-sky-950 text-sky-300 border border-sky-800"
+                        : "bg-emerald-950 text-emerald-300 border border-emerald-800"
+                    }">${o.tool.toUpperCase()}</span>
+                    <span>${escapeHtml(o.description)}</span>
+                  </span>
+                  <button onclick="copyCommandText(\`${escapeHtml(o.command).replace(/`/g, "\\`")}\`, this)" class="text-[10px] font-mono text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center gap-1 cursor-pointer transition">
+                    <i data-lucide="copy" class="w-3 h-3"></i>
+                    <span>Copy Command</span>
+                  </button>
+                </div>
+                <pre class="p-2 rounded bg-black/60 text-amber-200/90 font-mono text-[10px] overflow-x-auto select-all leading-normal whitespace-pre-wrap">${escapeHtml(o.command)}</pre>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        </div>
+      `;
+    }
+
     modalBody.innerHTML = `
       <div class="space-y-4">
         <!-- Subagent & Status Header -->
@@ -881,6 +937,17 @@ window.openChecklistModal = function (checklistId) {
           }">${result.status} (${result.severity})</span>
         </div>
 
+        <!-- Skenario Audit Adaptif (Tech-Stack Context) -->
+        <div>
+          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1.5">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Skenario Audit Adaptif (Tech-Stack Context):</span>
+          </h4>
+          <div class="p-3 rounded-lg bg-[#0e1424] border border-cyan-900/50 text-cyan-200/90 text-[11px] leading-relaxed font-sans">
+            🎯 ${escapeHtml(result.adaptiveScenario || "Skenario evaluasi standar OWASP WSTG v4.2.")}
+          </div>
+        </div>
+
         <!-- Objective -->
         <div>
           <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Objektif OWASP WSTG v4.2:</h4>
@@ -894,6 +961,9 @@ window.openChecklistModal = function (checklistId) {
             ${(result.toolsUsed || ["curl", "httpx"]).map((t) => `<span class="px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 text-[10px] font-mono">${escapeHtml(t)}</span>`).join("")}
           </div>
         </div>
+
+        <!-- Tailored Auditor Oneliners (ffuf & dirsearch) -->
+        ${onelinersHtml}
 
         <!-- Kalimat Verifikasi Berdasarkan Objective -->
         <div>

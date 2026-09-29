@@ -1,5 +1,6 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
 import { RawProbeRecord, SubagentContext, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info10MapArchitecture(ctx: SubagentContext): Promise<WstgChecklistResult> {
   const start = Date.now();
@@ -9,8 +10,12 @@ export async function info10MapArchitecture(ctx: SubagentContext): Promise<WstgC
   const objective = "Petakan topologi arsitektur infrastruktur: Web Application Firewall (WAF), Reverse Proxy, Load Balancer, API Gateway, CDN, dan internal IP/topology leakage.";
   const toolsUsed = ["curl", "httpx", "WAF Signature Prober", "Reverse Proxy Header Tracing Engine", "n4n4ku AI Verification Engine"];
 
+  const tech = ctx.techStack || { servers: [], frameworks: [], runtimes: [], cms: [], technologies: [], isSpa: false };
+  const { scenario: adaptiveScenario, tailoredOneliners } = getAdaptiveScenario(id, tech, ctx.targetUrl);
+
   const baseUrl = ctx.targetUrl.replace(/\/$/, "");
   ctx.log("INFO", `Memulai pemetaan arsitektur perimeter dan WAF/CDN pada: ${baseUrl}`);
+  ctx.log("INFO", `[Adaptive Scenario] ${adaptiveScenario}`);
 
   const findings: WstgFinding[] = [];
   const rawProbes: RawProbeRecord[] = [];
@@ -137,6 +142,8 @@ export async function info10MapArchitecture(ctx: SubagentContext): Promise<WstgC
     toolsUsed,
     verificationStatement,
     falsePositiveAnalysis: fpLog,
+    adaptiveScenario,
+    tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
     rawOutput: formatRawOutputs(rawProbes),

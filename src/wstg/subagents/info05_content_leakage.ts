@@ -1,5 +1,6 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
 import { RawProbeRecord, SubagentContext, checkFalsePositive, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info05ContentLeakage(ctx: SubagentContext): Promise<WstgChecklistResult> {
   const start = Date.now();
@@ -7,10 +8,14 @@ export async function info05ContentLeakage(ctx: SubagentContext): Promise<WstgCh
   const title = "Review Webpage Content for Information Leakage";
   const subAgentName = "ContentLeakageSubagent";
   const objective = "Audit HTML source code, developer comments, inline scripts, JavaScript bundles, source maps (.map), dan exposed configs (.git, .env).";
-  const toolsUsed = ["curl", "httpx", "JS Source Map Inspector", "Sensitive File Regex Tokenizer", "n4n4ku AI Verification Engine"];
+  const toolsUsed = ["curl", "httpx", "ffuf", "dirsearch", "JS Source Map Inspector", "Sensitive File Regex Tokenizer", "n4n4ku AI Verification Engine"];
+
+  const tech = ctx.techStack || { servers: [], frameworks: [], runtimes: [], cms: [], technologies: [], isSpa: false };
+  const { scenario: adaptiveScenario, tailoredOneliners } = getAdaptiveScenario(id, tech, ctx.targetUrl);
 
   const baseUrl = ctx.targetUrl.replace(/\/$/, "");
   ctx.log("INFO", `Memulai audit kebocoran konten pada: ${baseUrl}`);
+  ctx.log("INFO", `[Adaptive Scenario] ${adaptiveScenario}`);
 
   const findings: WstgFinding[] = [];
   const rawProbes: RawProbeRecord[] = [];
@@ -160,6 +165,8 @@ export async function info05ContentLeakage(ctx: SubagentContext): Promise<WstgCh
     toolsUsed,
     verificationStatement,
     falsePositiveAnalysis: fpLog,
+    adaptiveScenario,
+    tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
     rawOutput: formatRawOutputs(rawProbes),

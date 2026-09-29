@@ -1,5 +1,6 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
 import { RawProbeRecord, SubagentContext, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info01SearchEngineRecon(ctx: SubagentContext): Promise<WstgChecklistResult> {
   const start = Date.now();
@@ -9,7 +10,11 @@ export async function info01SearchEngineRecon(ctx: SubagentContext): Promise<Wst
   const objective = "Identifikasi kebocoran data sensitif, hidden URLs, staging environment, atau riwayat exposure melalui web archive dan indeks publik.";
   const toolsUsed = ["curl", "Wayback Machine CDX API", "HTTP Header Inspector", "n4n4ku AI Verification Engine"];
 
+  const tech = ctx.techStack || { servers: [], frameworks: [], runtimes: [], cms: [], technologies: [], isSpa: false };
+  const { scenario: adaptiveScenario, tailoredOneliners } = getAdaptiveScenario(id, tech, ctx.targetUrl);
+
   ctx.log("INFO", `Memulai reconnaissance pasif & search discovery untuk domain: ${ctx.targetDomain}`);
+  ctx.log("INFO", `[Adaptive Scenario] ${adaptiveScenario}`);
 
   const findings: WstgFinding[] = [];
   const rawProbes: RawProbeRecord[] = [];
@@ -124,6 +129,8 @@ export async function info01SearchEngineRecon(ctx: SubagentContext): Promise<Wst
     toolsUsed,
     verificationStatement,
     falsePositiveAnalysis: fpLog,
+    adaptiveScenario,
+    tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
     rawOutput: formatRawOutputs(rawProbes),

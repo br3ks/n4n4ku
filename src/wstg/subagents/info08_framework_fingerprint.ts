@@ -1,5 +1,6 @@
 import { WstgChecklistResult, WstgFinding } from "../types.js";
 import { RawProbeRecord, SubagentContext, checkFalsePositive, evaluateFindings, formatRawOutputs, safeFetch } from "./base.js";
+import { getAdaptiveScenario } from "../tech_matrix.js";
 
 export async function info08FingerprintFramework(ctx: SubagentContext): Promise<WstgChecklistResult> {
   const start = Date.now();
@@ -7,10 +8,14 @@ export async function info08FingerprintFramework(ctx: SubagentContext): Promise<
   const title = "Fingerprint Web Application Framework";
   const subAgentName = "FrameworkFingerprintSubagent";
   const objective = "Identifikasi framework web yang digunakan (Next.js, Spring Boot, Laravel, Django, Express, ASP.NET Core) beserta dependensi dan pemeriksaan debug routes.";
-  const toolsUsed = ["curl", "httpx", "Framework Signature Heuristics", "Debug Route Prober", "n4n4ku AI Verification Engine"];
+  const toolsUsed = ["curl", "httpx", "ffuf", "Framework Signature Heuristics", "Debug Route Prober", "n4n4ku AI Verification Engine"];
+
+  const tech = ctx.techStack || { servers: [], frameworks: [], runtimes: [], cms: [], technologies: [], isSpa: false };
+  const { scenario: adaptiveScenario, tailoredOneliners } = getAdaptiveScenario(id, tech, ctx.targetUrl);
 
   const baseUrl = ctx.targetUrl.replace(/\/$/, "");
   ctx.log("INFO", `Memulai fingerprinting framework web pada: ${baseUrl}`);
+  ctx.log("INFO", `[Adaptive Scenario] ${adaptiveScenario}`);
 
   const findings: WstgFinding[] = [];
   const rawProbes: RawProbeRecord[] = [];
@@ -152,6 +157,8 @@ export async function info08FingerprintFramework(ctx: SubagentContext): Promise<
     toolsUsed,
     verificationStatement,
     falsePositiveAnalysis: fpLog,
+    adaptiveScenario,
+    tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
     rawOutput: formatRawOutputs(rawProbes),
