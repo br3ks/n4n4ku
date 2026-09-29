@@ -132,11 +132,22 @@ export async function runDirectoryFuzzing(
   const baselineLen = baselineRes.text.length;
 
   if (ffufBin) {
-    log?.("INFO", `[ffuf Engine] ffuf terdeteksi (${ffufBin}). Menjalankan directory fuzzing untuk ${wordlist.length} target paths...`);
+    log?.("INFO", `[ffuf Engine] ffuf terdeteksi (${ffufBin}). Menjalankan directory fuzzing untuk ${cleanUrl}...`);
 
-    const tempDir = os.tmpdir();
-    const wordlistFile = path.join(tempDir, `wstg_ffuf_${Date.now()}.txt`);
-    await fs.writeFile(wordlistFile, wordlist.join("\n"), "utf-8");
+    // ponytail: prefer SecLists if available in container, otherwise write adaptive wordlist to temp
+    const seclistsPath = "/usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt";
+    let wordlistFile: string;
+    let cleanupWordlist = false;
+    try {
+      await fs.access(seclistsPath);
+      wordlistFile = seclistsPath;
+      log?.("INFO", `[SecLists] Using ${seclistsPath} (${wordlist.length} adaptive paths supplemented by raft-medium)`);
+    } catch {
+      const tempDir = os.tmpdir();
+      wordlistFile = path.join(tempDir, `wstg_ffuf_${Date.now()}.txt`);
+      await fs.writeFile(wordlistFile, wordlist.join("\n"), "utf-8");
+      cleanupWordlist = true;
+    }
 
     const cmd = `${ffufBin} -u "${cleanUrl}/FUZZ" -w "${wordlistFile}" -mc 200,301,302,401,403 -timeout 5 -rate 50 -s -json`;
 
@@ -206,7 +217,7 @@ export async function runDirectoryFuzzing(
         } catch {}
       }
 
-      await fs.unlink(wordlistFile).catch(() => {});
+      if (cleanupWordlist) await fs.unlink(wordlistFile).catch(() => {});
 
       // Build authentic terminal banner & output
       const rawTerminal = formatFfufTerminalOutput(cleanUrl, wordlist.length, matches);
@@ -220,7 +231,7 @@ export async function runDirectoryFuzzing(
       };
     } catch (err: any) {
       log?.("WARN", `ffuf execution error: ${err.message}. Fallback ke native parallel fuzzer.`);
-      await fs.unlink(wordlistFile).catch(() => {});
+      if (cleanupWordlist) await fs.unlink(wordlistFile).catch(() => {});
     }
   }
 
@@ -296,7 +307,7 @@ function formatFfufTerminalOutput(targetUrl: string, wordlistCount: number, matc
          \\ \\_\\   \\ \\_\\  \\ \\____/  \\ \\_\\       
           \\/_/    \\/_/   \\/___/    \\/_/       
 
-       v2.1.0-git - Fuzz Faster U Fool
+       v2.3.0 - Fuzz Faster U Fool
 ________________________________________________
 
  :: Method           : GET

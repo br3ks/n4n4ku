@@ -377,7 +377,7 @@ function formatKatanaTerminalOutput(targetUrl: string, endpoints: string[]): str
  / //_/ _ \`/ __/ _ \`/ _ \\/ _ \`/
 /_/|_|\\_,_/\\__/\\_,_/_//_/\\_,_/
 
-v1.1.0 - Next-Generation Web Crawling & Spidering
+v1.7.0 - Next-Generation Web Crawling & Spidering
 ________________________________________________
 
  :: Target URL      : ${targetUrl}
@@ -415,7 +415,7 @@ function formatNucleiTerminalOutput(targetUrl: string, tags: string, matches: st
  / / / / /_/ / /__/ /  __/ /  
 /_/ /_/\\__,_/\\___/_/\\___/_/   
 
-v3.3.0 - Vulnerability & Exposure Scanner
+v3.11.1 - Vulnerability & Exposure Scanner
 ________________________________________________
 
  :: Target       : ${targetUrl}
@@ -445,7 +445,7 @@ function formatSubfinderTerminalOutput(domain: string, subdomains: string[]): st
 \\__ \\_| |_) |  _| | | | | | (_| |  __/ |   
 |___(_)_.__/|_|   |_|_| |_|\\__,_|\\___|_|   
 
-v2.6.5 - Fast Passive Subdomain Enumeration
+v2.16.0 - Fast Passive Subdomain Enumeration
 ________________________________________________
 
  :: Domain  : ${domain}
