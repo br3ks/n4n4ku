@@ -109,3 +109,21 @@
   padding: 0.5rem 0.75rem;
   color: #cbd5e1;
 }
+
+/* Authentic Terminal Mockup for Evidence Screenshots */
+.terminal-mockup {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.terminal-mockup pre {
+  font-family: inherit;
+  white-space: pre;
+  tab-size: 2;
+  font-feature-settings: "liga" 0;
+}
+.terminal-mockup span.text-emerald-400 {
+  color: #34d399;
+}
+.terminal-mockup span.text-sky-400 {
+  color: #38bdf8;
+}

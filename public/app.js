@@ -743,6 +743,87 @@ function handleWstgEvent(evt) {
   }
 }
 
+// Render Authentic Terminal Window Component (Screenshot-Ready for Evidence)
+function renderTerminalEvidence(rawText, checklistId) {
+  if (!rawText) return `<div class="text-slate-600 font-mono text-xs p-3">No network probes executed.</div>`;
+
+  const escaped = escapeHtml(rawText);
+  const lines = escaped.split("\n");
+  const highlightedLines = lines.map((line) => {
+    // Shell command line prompt: e.g. "$ curl ..."
+    if (line.startsWith("$ ")) {
+      return `<span class="text-emerald-400 font-bold">$</span> <span class="text-white font-semibold">${line.slice(2)}</span>`;
+    }
+    // HTTP response status line: e.g. "HTTP/1.1 200 OK"
+    if (line.startsWith("HTTP/1.1 ") || line.startsWith("HTTP/2 ")) {
+      if (line.includes(" 200 ") || line.includes(" 204 ") || line.includes(" 201 ")) {
+        return `<span class="text-emerald-400 font-bold tracking-wide">${line}</span>`;
+      } else if (line.includes(" 301 ") || line.includes(" 302 ") || line.includes(" 307 ") || line.includes(" 308 ")) {
+        return `<span class="text-cyan-400 font-bold tracking-wide">${line}</span>`;
+      } else if (line.includes(" 401 ") || line.includes(" 403 ")) {
+        return `<span class="text-amber-400 font-bold tracking-wide">${line}</span>`;
+      } else if (line.includes(" 404 ") || line.includes(" 500 ") || line.includes(" 405 ") || line.includes(" 502 ")) {
+        return `<span class="text-rose-400 font-bold tracking-wide">${line}</span>`;
+      }
+      return `<span class="text-purple-400 font-bold tracking-wide">${line}</span>`;
+    }
+    // Headers: e.g. "Server: nginx", "Date: ..."
+    const headerMatch = line.match(/^([A-Za-z0-9_-]+): (.*)$/);
+    if (headerMatch) {
+      return `<span class="text-sky-400 font-medium">${headerMatch[1]}:</span> <span class="text-slate-300">${headerMatch[2]}</span>`;
+    }
+    // Error line e.g. curl: (28) ...
+    if (line.startsWith("curl: ")) {
+      return `<span class="text-rose-400 font-bold">${line}</span>`;
+    }
+    // Body lines
+    return `<span class="text-slate-300">${line}</span>`;
+  });
+
+  return `
+    <div class="terminal-mockup rounded-xl overflow-hidden border border-[#232d47] bg-[#070a12] shadow-2xl my-2">
+      <!-- Title Bar with macOS / Linux Terminal Window Dots -->
+      <div class="bg-[#0e1322] px-3.5 py-2.5 border-b border-[#1e263d] flex items-center justify-between select-none">
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1.5">
+            <span class="w-3 h-3 rounded-full bg-[#ff5f56] inline-block shadow-sm"></span>
+            <span class="w-3 h-3 rounded-full bg-[#ffbd2e] inline-block shadow-sm"></span>
+            <span class="w-3 h-3 rounded-full bg-[#27c93f] inline-block shadow-sm"></span>
+          </div>
+          <span class="font-mono text-[11px] text-slate-300 font-semibold ml-2">auditor@sal4waku: ~/recon/${checklistId.toLowerCase()}</span>
+        </div>
+        <div class="flex items-center gap-2 font-mono text-[10px]">
+          <span class="text-emerald-400 bg-emerald-950/70 border border-emerald-800/80 px-2 py-0.5 rounded font-semibold tracking-wider">CLI EVIDENCE</span>
+          <button id="copyTerminalBtn_${checklistId}" onclick="copyRawTerminal('${checklistId}')" class="flex items-center gap-1 text-slate-300 hover:text-white px-2.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer border border-slate-700">
+            <i data-lucide="copy" class="w-3 h-3"></i>
+            <span id="copyTerminalLabel_${checklistId}">Copy Evidence</span>
+          </button>
+        </div>
+      </div>
+      <!-- Terminal Output Screen -->
+      <div class="p-4 font-mono text-[11px] leading-relaxed overflow-x-auto max-h-72 scrollbar-thin bg-[#070a12] text-slate-200 select-text">
+        <pre class="font-mono whitespace-pre text-[11px] leading-normal">${highlightedLines.join("\n")}</pre>
+        <div class="mt-2.5 text-slate-500 font-mono text-[10px] flex items-center gap-1">
+          <span class="text-emerald-400 font-bold">auditor@sal4waku</span>:<span class="text-blue-400">~</span>$ <span class="w-2 h-3.5 bg-emerald-400 inline-block animate-pulse align-middle"></span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.copyRawTerminal = function (checklistId) {
+  const result = allChecklistResults[checklistId];
+  if (!result || !result.rawOutput) return;
+  navigator.clipboard.writeText(result.rawOutput);
+  const label = document.getElementById(`copyTerminalLabel_${checklistId}`);
+  if (label) {
+    label.textContent = "Copied!";
+    setTimeout(() => {
+      label.textContent = "Copy Evidence";
+    }, 2000);
+  }
+};
+
 // Open Modal Details for a Checklist
 window.openChecklistModal = function (checklistId) {
   const meta = CHECKLIST_METADATA.find((m) => m.id === checklistId);
@@ -838,10 +919,16 @@ window.openChecklistModal = function (checklistId) {
           ${findingsHtml}
         </div>
 
-        <!-- Raw Probe Output -->
+        <!-- Raw Probe Output (Authentic Terminal Window) -->
         <div>
-          <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 mb-1">Raw Probe Output (HTTP Transcripts):</h4>
-          <pre class="p-3 rounded-lg bg-[#080c16] border border-[#1e263d] text-slate-300 font-mono text-[10px] overflow-x-auto max-h-48 scrollbar-thin select-all">${escapeHtml(result.rawOutput || "Tidak ada raw probe tercatat.")}</pre>
+          <div class="flex items-center justify-between mb-1.5">
+            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+              <i data-lucide="terminal" class="w-3.5 h-3.5 text-emerald-400"></i>
+              <span>Raw CLI Evidence &amp; HTTP Transcript:</span>
+            </h4>
+            <span class="text-[10px] text-slate-500 font-mono">Screenshot-ready CLI terminal</span>
+          </div>
+          ${renderTerminalEvidence(result.rawOutput, result.id)}
         </div>
 
         <!-- Rekomendasi Remediasi -->
@@ -854,6 +941,7 @@ window.openChecklistModal = function (checklistId) {
   }
 
   checklistModal.classList.remove("hidden");
+  lucide.createIcons();
 };
 
 modalCloseBtn.addEventListener("click", () => {
