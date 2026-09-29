@@ -24,10 +24,17 @@ export interface WstgFinding {
 }
 
 export interface TailoredOneliner {
-  tool: "ffuf" | "dirsearch" | "curl" | "nmap";
+  tool: "ffuf" | "dirsearch" | "curl" | "nmap" | "nuclei" | "katana" | "httpx" | "subfinder" | "naabu" | "tlsx";
   command: string;
   description: string;
-  category: "directory-fuzzing" | "api-discovery" | "technology-audit" | "vulnerability-probe";
+  category:
+    | "directory-fuzzing"
+    | "api-discovery"
+    | "technology-audit"
+    | "vulnerability-probe"
+    | "crawling-spidering"
+    | "subdomain-enum"
+    | "network-recon";
 }
 
 export interface DetectedTechStack {

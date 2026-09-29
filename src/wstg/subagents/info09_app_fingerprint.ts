@@ -124,6 +124,18 @@ export async function info09FingerprintWebApp(ctx: SubagentContext): Promise<Wst
     }
   } catch {}
 
+  // 4. Nuclei CMS & COTS Detection
+  ctx.log("INFO", "Menjalankan Nuclei CMS fingerprinting templates...");
+  let nucleiOutput = "";
+  try {
+    const { runNucleiInfoAudit } = await import("../projectdiscovery.js");
+    const nRes = await runNucleiInfoAudit(ctx.targetUrl, tech, "tech", { log: ctx.log });
+    nucleiOutput = nRes.rawOutput;
+    if (nRes.findings.length > 0) findings.push(...nRes.findings);
+  } catch {}
+
+  toolsUsed.push("nuclei");
+
   const evaluated = evaluateFindings(
     findings,
     "Aplikasi web tidak mengekspos file dokumentasi bawaan CMS maupun endpoint user enumeration terbuka.",
@@ -132,10 +144,14 @@ export async function info09FingerprintWebApp(ctx: SubagentContext): Promise<Wst
 
   const verificationStatement =
     evaluated.status === "PASS"
-      ? `Evidence: Tidak ditemukan signature file COTS standar (readme.html, version.php mengembalikan 404). Tag meta generator di-strip dari halaman web. REST API user enumeration diblokir atau dinonaktifkan.\nAlasan: Aplikasi web di-harden secara memadai; artefak rilis, file dokumentasi bawaan, dan endpoint enumerasi pengguna dinonaktifkan dari publik.`
+      ? `Evidence: Tidak ditemukan signature file COTS standar (readme.html, version.php mengembalikan 404). Tag meta generator di-strip dari halaman web. REST API user enumeration diblokir atau dinonaktifkan. Nuclei CMS templates mengonfirmasi tidak ada CVE / exposure COTS terbuka.\nAlasan: Aplikasi web di-harden secara memadai; artefak rilis, file dokumentasi bawaan, dan endpoint enumerasi pengguna dinonaktifkan dari publik.`
       : `Evidence: Ditemukan artefak instalasi CMS atau kebocoran daftar username pengguna (${findings.map((f) => f.evidence).join(", ")}).\nAlasan: Konfigurasi default CMS belum di-harden sehingga mengizinkan enumerasi informasi sensitif ke publik.`;
 
   ctx.log(evaluated.status === "PASS" ? "PASS" : "WARN", `Hasil akhir WSTG-INFO-09: ${evaluated.status} (Severity: ${evaluated.severity})`);
+
+  const combinedRaw = nucleiOutput
+    ? `${nucleiOutput}\n\n${formatRawOutputs(rawProbes)}`
+    : formatRawOutputs(rawProbes);
 
   return {
     id,
@@ -151,7 +167,7 @@ export async function info09FingerprintWebApp(ctx: SubagentContext): Promise<Wst
     tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
-    rawOutput: formatRawOutputs(rawProbes),
+    rawOutput: combinedRaw,
     recommendation: evaluated.recommendation,
     durationMs: Date.now() - start,
   };

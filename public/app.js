@@ -880,12 +880,12 @@ window.openChecklistModal = function (checklistId) {
     let onelinersHtml = "";
     if (result.tailoredOneliners && result.tailoredOneliners.length > 0) {
       onelinersHtml = `
-        <!-- Tailored Auditor Oneliners (ffuf & dirsearch) -->
+        <!-- Tailored Auditor Oneliners (ProjectDiscovery & Fuzzing Suite) -->
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <h4 class="font-bold text-xs uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
               <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-400"></i>
-              <span>Tailored Auditor Oneliners (ffuf &amp; dirsearch):</span>
+              <span>Tailored Auditor Oneliners (ProjectDiscovery &amp; Fuzzing Suite):</span>
             </h4>
             <span class="text-[10px] text-slate-500 font-mono">Siap jalan di terminal</span>
           </div>
@@ -897,7 +897,15 @@ window.openChecklistModal = function (checklistId) {
                 <div class="flex items-center justify-between">
                   <span class="text-[11px] font-semibold text-slate-300 flex items-center gap-1.5">
                     <span class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold ${
-                      o.tool === "ffuf"
+                      o.tool === "nuclei"
+                        ? "bg-purple-950 text-purple-300 border border-purple-800"
+                        : o.tool === "katana"
+                        ? "bg-rose-950 text-rose-300 border border-rose-800"
+                        : o.tool === "subfinder"
+                        ? "bg-indigo-950 text-indigo-300 border border-indigo-800"
+                        : o.tool === "httpx"
+                        ? "bg-cyan-950 text-cyan-300 border border-cyan-800"
+                        : o.tool === "ffuf"
                         ? "bg-amber-950 text-amber-300 border border-amber-800"
                         : o.tool === "dirsearch"
                         ? "bg-sky-950 text-sky-300 border border-sky-800"

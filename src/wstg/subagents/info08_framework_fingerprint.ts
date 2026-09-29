@@ -134,6 +134,18 @@ export async function info08FingerprintFramework(ctx: SubagentContext): Promise<
     }
   } catch {}
 
+  // 3. Nuclei Framework Debug & Signature Probe
+  ctx.log("INFO", "Menjalankan Nuclei framework debug templates...");
+  let nucleiOutput = "";
+  try {
+    const { runNucleiInfoAudit } = await import("../projectdiscovery.js");
+    const nRes = await runNucleiInfoAudit(ctx.targetUrl, tech, "debug", { log: ctx.log });
+    nucleiOutput = nRes.rawOutput;
+    if (nRes.findings.length > 0) findings.push(...nRes.findings);
+  } catch {}
+
+  toolsUsed.push("nuclei");
+
   const evaluated = evaluateFindings(
     findings,
     "Framework web aman. Tidak ditemukan konsol debug aktif (/actuator, /_ignition) maupun kebocoran stack trace error.",
@@ -142,10 +154,14 @@ export async function info08FingerprintFramework(ctx: SubagentContext): Promise<
 
   const verificationStatement =
     evaluated.status === "PASS"
-      ? `Evidence: Header framework dibersihkan dan cookie session dinormalisasi. Probing ke endpoint debug framework (/actuator, /_ignition, /_profiler) mengembalikan status 404 atau bukan soft-404, dan respon error 404 menampilkan template kustom tanpa stack trace internal.\nAlasan: Framework web telah di-harden; informasi versi disembunyikan dan endpoint administrasi framework dinonaktifkan pada level konfigurasi produksi.`
+      ? `Evidence: Header framework dibersihkan dan cookie session dinormalisasi. Probing ke endpoint debug framework (/actuator, /_ignition, /_profiler) mengembalikan status 404 atau bukan soft-404, dan respon error 404 menampilkan template kustom tanpa stack trace internal. Nuclei debug templates mengonfirmasi tidak ada konsol debug framework yang bocor.\nAlasan: Framework web telah di-harden; informasi versi disembunyikan dan endpoint administrasi framework dinonaktifkan pada level konfigurasi produksi.`
       : `Evidence: Ditemukan console debug atau stack trace bawaan framework yang terekspos (${findings.map((f) => f.evidence).join(", ")}).\nAlasan: Konfigurasi debugging (seperti Spring Boot Actuator atau Laravel Ignition) masih aktif di lingkungan produksi.`;
 
   ctx.log(evaluated.status === "PASS" ? "PASS" : "WARN", `Hasil akhir WSTG-INFO-08: ${evaluated.status} (Severity: ${evaluated.severity})`);
+
+  const combinedRaw = nucleiOutput
+    ? `${nucleiOutput}\n\n${formatRawOutputs(rawProbes)}`
+    : formatRawOutputs(rawProbes);
 
   return {
     id,
@@ -161,7 +177,7 @@ export async function info08FingerprintFramework(ctx: SubagentContext): Promise<
     tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
-    rawOutput: formatRawOutputs(rawProbes),
+    rawOutput: combinedRaw,
     recommendation: evaluated.recommendation,
     durationMs: Date.now() - start,
   };

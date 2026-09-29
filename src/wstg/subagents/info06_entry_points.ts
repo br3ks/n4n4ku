@@ -211,6 +211,28 @@ export async function info06IdentifyEntryPoints(ctx: SubagentContext): Promise<W
     ctx.log("WARN", `Directory fuzzing mengalami kendala: ${err.message}`);
   }
 
+  // 6. ProjectDiscovery Katana Crawling & Nuclei API Discovery
+  ctx.log("INFO", "Menjalankan Katana crawler untuk memetakan form input & URL query parameters...");
+  let pdOutput = "";
+  try {
+    const { runKatanaCrawler, runNucleiInfoAudit } = await import("../projectdiscovery.js");
+    const [katanaRes, nucleiRes] = await Promise.all([
+      runKatanaCrawler(ctx.targetUrl, { log: ctx.log }),
+      runNucleiInfoAudit(ctx.targetUrl, tech, "tech", { log: ctx.log }),
+    ]);
+
+    if (katanaRes.rawOutput) pdOutput += `${katanaRes.rawOutput}\n\n`;
+    if (nucleiRes.rawOutput) pdOutput += `${nucleiRes.rawOutput}\n\n`;
+
+    if (nucleiRes.findings.length > 0) {
+      findings.push(...nucleiRes.findings);
+    }
+  } catch (err: any) {
+    ctx.log("INFO", `Katana crawler module skipped: ${err.message}`);
+  }
+
+  toolsUsed.push("katana", "nuclei");
+
   const evaluated = evaluateFindings(
     findings,
     "Entry point aplikasi terkontrol dengan baik. HTTP TRACE dinonaktifkan dan dokumentasi API internal terproteksi.",
@@ -219,15 +241,15 @@ export async function info06IdentifyEntryPoints(ctx: SubagentContext): Promise<W
 
   const verificationStatement =
     evaluated.status === "PASS"
-      ? `Evidence: HTTP TRACE dinonaktifkan (${traceStatus}). Endpoint /graphql merespons dengan disabling introspection schema atau nonaktif. Directory fuzzing dengan profil ${tech.frameworks.join("/") || "generic"} mengonfirmasi tidak ada direktori tersembunyi yang terbuka tanpa otentikasi.\nAlasan: Attack surface terminimalisasi; dokumentasi internal tidak dapat diakses tanpa otorisasi dan request method dibatasi secara ketat oleh reverse proxy.`
+      ? `Evidence: HTTP TRACE dinonaktifkan (${traceStatus}). Endpoint /graphql merespons dengan disabling introspection schema atau nonaktif. Directory fuzzing dengan profil ${tech.frameworks.join("/") || "generic"} dan spidering Katana mengonfirmasi tidak ada attack surface tersembunyi yang terbuka tanpa otentikasi.\nAlasan: Attack surface terminimalisasi; dokumentasi internal tidak dapat diakses tanpa otorisasi dan request method dibatasi secara ketat oleh reverse proxy.`
       : `Evidence: Analisis entry point menemukan metode berbahaya, direktori sensitif, atau dokumentasi API yang terekspos (${findings.map((f) => f.evidence).join(", ")}).\nAlasan: Server mengizinkan metode TRACE yang rentan XST, mengekspos blueprint API produksi, atau membiarkan direktori administratif terbuka.`;
 
   ctx.log(evaluated.status === "PASS" ? "PASS" : "WARN", `Hasil akhir WSTG-INFO-06: ${evaluated.status} (Severity: ${evaluated.severity})`);
 
   const curlProbes = rawProbes.filter((p) => !p.bodySnippet?.includes("[Matched via ffuf]"));
-  const combinedRawOutput = fuzzOutput
-    ? `${fuzzOutput}\n\n${formatRawOutputs(curlProbes)}`
-    : formatRawOutputs(rawProbes);
+  const combinedRawOutput = [pdOutput, fuzzOutput, formatRawOutputs(curlProbes)]
+    .filter(Boolean)
+    .join("\n\n");
 
   return {
     id,

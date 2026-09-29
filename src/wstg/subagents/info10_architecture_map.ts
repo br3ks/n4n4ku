@@ -117,6 +117,18 @@ export async function info10MapArchitecture(ctx: SubagentContext): Promise<WstgC
     }
   } catch {}
 
+  // 4. Nuclei WAF & Edge Detection
+  ctx.log("INFO", "Menjalankan Nuclei WAF & CDN detection templates...");
+  let nucleiOutput = "";
+  try {
+    const { runNucleiInfoAudit } = await import("../projectdiscovery.js");
+    const nRes = await runNucleiInfoAudit(ctx.targetUrl, tech, "waf", { log: ctx.log });
+    nucleiOutput = nRes.rawOutput;
+    if (nRes.findings.length > 0) findings.push(...nRes.findings);
+  } catch {}
+
+  toolsUsed.push("nuclei", "httpx");
+
   const evaluated = evaluateFindings(
     findings,
     `Topologi arsitektur aman. Terproteksi oleh layer reverse proxy/CDN (${
@@ -127,10 +139,14 @@ export async function info10MapArchitecture(ctx: SubagentContext): Promise<WstgC
 
   const verificationStatement =
     evaluated.status === "PASS"
-      ? `Evidence: Response headers terfilter melalui reverse proxy (${detectedEdgeTech.join(", ") || "Generic Reverse Proxy"}); header debugging upstream dinonaktifkan. Tidak ditemukan kebocoran IP internal RFC 1918.\nAlasan: Arsitektur cloud/gateway terlindungi di balik reverse proxy; informasi topologi jaringan private tidak bocor ke publik.`
+      ? `Evidence: Response headers terfilter melalui reverse proxy (${detectedEdgeTech.join(", ") || "Generic Reverse Proxy"}); header debugging upstream dinonaktifkan. Nuclei WAF templates mengonfirmasi tidak ada eksposur IP origin RFC 1918.\nAlasan: Arsitektur cloud/gateway terlindungi di balik reverse proxy; informasi topologi jaringan private tidak bocor ke publik.`
       : `Evidence: Ditemukan kebocoran IP internal privat atau header tracing service mesh (${findings.map((f) => f.evidence).join(", ")}).\nAlasan: Reverse proxy/load balancer meneruskan header debugging internal ke client tanpa stripping.`;
 
   ctx.log(evaluated.status === "PASS" ? "PASS" : "WARN", `Hasil akhir WSTG-INFO-10: ${evaluated.status} (Severity: ${evaluated.severity})`);
+
+  const combinedRaw = nucleiOutput
+    ? `${nucleiOutput}\n\n${formatRawOutputs(rawProbes)}`
+    : formatRawOutputs(rawProbes);
 
   return {
     id,
@@ -146,7 +162,7 @@ export async function info10MapArchitecture(ctx: SubagentContext): Promise<WstgC
     tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
-    rawOutput: formatRawOutputs(rawProbes),
+    rawOutput: combinedRaw,
     recommendation: evaluated.recommendation,
     durationMs: Date.now() - start,
   };

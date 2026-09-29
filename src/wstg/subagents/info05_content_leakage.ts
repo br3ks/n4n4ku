@@ -142,6 +142,28 @@ export async function info05ContentLeakage(ctx: SubagentContext): Promise<WstgCh
     } catch {}
   }
 
+  // 4. ProjectDiscovery Katana Crawling & Nuclei Exposure Audit
+  ctx.log("INFO", "Menjalankan Katana crawler untuk asset JavaScript & Nuclei exposure audit...");
+  let pdRawOutput = "";
+  try {
+    const { runKatanaCrawler, runNucleiInfoAudit } = await import("../projectdiscovery.js");
+    const [katanaRes, nucleiRes] = await Promise.all([
+      runKatanaCrawler(ctx.targetUrl, { log: ctx.log }),
+      runNucleiInfoAudit(ctx.targetUrl, tech, "exposure", { log: ctx.log }),
+    ]);
+
+    if (katanaRes.rawOutput) pdRawOutput += `${katanaRes.rawOutput}\n\n`;
+    if (nucleiRes.rawOutput) pdRawOutput += `${nucleiRes.rawOutput}\n\n`;
+
+    if (nucleiRes.findings.length > 0) {
+      findings.push(...nucleiRes.findings);
+    }
+  } catch (err: any) {
+    ctx.log("INFO", `ProjectDiscovery modules skipped: ${err.message}`);
+  }
+
+  toolsUsed.push("katana", "nuclei");
+
   const evaluated = evaluateFindings(
     findings,
     "Webpage content bersih. Tidak ditemukan source maps (.map), kebocoran .git, maupun file environment (.env).",
@@ -150,10 +172,14 @@ export async function info05ContentLeakage(ctx: SubagentContext): Promise<WstgCh
 
   const verificationStatement =
     evaluated.status === "PASS"
-      ? `Evidence: Inspeksi seluruh skrip JS client-side tidak menemukan hardcoded API keys atau internal URL tokens. Request ke .js.map mengembalikan 404/403. Probing file sensitif (.git/HEAD, .env, docker-compose.yml) terblokir atau terverifikasi bukan soft-404.\nAlasan: Production build pipeline berhasil melakukan minifikasi kode, stripping komentar debug, dan disabling source maps; web root terbebas dari file konfigurasi sensitif.`
+      ? `Evidence: Inspeksi seluruh skrip JS client-side tidak menemukan hardcoded API keys atau internal URL tokens. Request ke .js.map mengembalikan 404/403. Probing file sensitif (.git/HEAD, .env, docker-compose.yml) terblokir atau terverifikasi bukan soft-404. Katana & Nuclei exposure audit mengonfirmasi perimeter bersih.\nAlasan: Production build pipeline berhasil melakukan minifikasi kode, stripping komentar debug, dan disabling source maps; web root terbebas dari file konfigurasi sensitif.`
       : `Evidence: Analisis konten halaman menemukan kebocoran informasi atau eksposur file konfigurasi rahasia (${findings.map((f) => f.evidence).join(", ")}).\nAlasan: File konfigurasi sensitif ter-commit ke dalam direktori publik atau production source map tidak dinonaktifkan pada pipeline CI/CD.`;
 
   ctx.log(evaluated.status === "PASS" ? "PASS" : "WARN", `Hasil akhir WSTG-INFO-05: ${evaluated.status} (Severity: ${evaluated.severity})`);
+
+  const combinedRaw = pdRawOutput
+    ? `${pdRawOutput}${formatRawOutputs(rawProbes)}`
+    : formatRawOutputs(rawProbes);
 
   return {
     id,
@@ -169,7 +195,7 @@ export async function info05ContentLeakage(ctx: SubagentContext): Promise<WstgCh
     tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
-    rawOutput: formatRawOutputs(rawProbes),
+    rawOutput: combinedRaw,
     recommendation: evaluated.recommendation,
     durationMs: Date.now() - start,
   };

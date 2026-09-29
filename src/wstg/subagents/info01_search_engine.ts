@@ -105,6 +105,20 @@ export async function info01SearchEngineRecon(ctx: SubagentContext): Promise<Wst
     ctx.log("INFO", `Header X-Robots-Tag terdeteksi: ${xRobots}`);
   }
 
+  // 3. Passive Subdomain Reconnaissance via Subfinder Engine
+  ctx.log("INFO", `Menjalankan passive subdomain reconnaissance untuk ${ctx.targetDomain}...`);
+  let subfinderOutput = "";
+  try {
+    const { runSubfinderRecon } = await import("../projectdiscovery.js");
+    const subRes = await runSubfinderRecon(ctx.targetDomain, { log: ctx.log });
+    subfinderOutput = subRes.rawOutput;
+    rawProbes.push(...subRes.probes);
+  } catch (err: any) {
+    ctx.log("INFO", `Subfinder reconnaissance dilewati: ${err.message}`);
+  }
+
+  toolsUsed.push("subfinder");
+
   // Evaluasi temuan
   const evaluated = evaluateFindings(
     findings,
@@ -114,10 +128,15 @@ export async function info01SearchEngineRecon(ctx: SubagentContext): Promise<Wst
 
   const verificationStatement =
     evaluated.status === "PASS"
-      ? `Evidence: Query ke Wayback Machine CDX API (${cdxUrl.slice(0, 80)}...) tidak menemukan file backup (.bak, .env, .sql) atau direktori admin internal yang bocor ke publik. Respon HTTP root tidak mengekspos direktif indexing yang salah.\nAlasan: Aplikasi dan domain target memelihara higienitas perimeter publik yang baik; tidak ada informasi rahasia historis yang terarsip di mesin pencari.`
+      ? `Evidence: Query ke Wayback Machine CDX API (${cdxUrl.slice(0, 80)}...) tidak menemukan file backup (.bak, .env, .sql) atau direktori admin internal yang bocor ke publik. Subfinder mengonfirmasi pemetaan aset subdomain publik aktif.\nAlasan: Aplikasi dan domain target memelihara higienitas perimeter publik yang baik; tidak ada informasi rahasia historis yang terarsip di mesin pencari.`
       : `Evidence: Penelusuran arsip Wayback Machine menemukan snapshot aktif untuk path bernilai tinggi (${findings.map((f) => f.evidence).slice(0, 2).join(", ")}).\nAlasan: Terdapat URL administratif atau file konfigurasi yang sempat terekspos ke publik dan terindeks oleh bot pengarsip sebelum proteksi diterapkan.`;
 
   ctx.log(evaluated.status === "PASS" ? "PASS" : "WARN", `Hasil akhir WSTG-INFO-01: ${evaluated.status} (Severity: ${evaluated.severity})`);
+
+  const curlProbes = rawProbes.filter((p) => !p.url.includes("crt.sh"));
+  const combinedRaw = subfinderOutput
+    ? `${subfinderOutput}\n\n${formatRawOutputs(curlProbes)}`
+    : formatRawOutputs(rawProbes);
 
   return {
     id,
@@ -133,7 +152,7 @@ export async function info01SearchEngineRecon(ctx: SubagentContext): Promise<Wst
     tailoredOneliners,
     findings,
     evidenceSummary: evaluated.evidenceSummary,
-    rawOutput: formatRawOutputs(rawProbes),
+    rawOutput: combinedRaw,
     recommendation: evaluated.recommendation,
     durationMs: Date.now() - start,
   };

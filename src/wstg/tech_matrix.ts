@@ -178,7 +178,13 @@ export function getAdaptiveScenario(
 
   switch (id) {
     case "WSTG-INFO-01":
-      scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Memetakan arsip publik, snapshot CDX historis, dan kebocoran endpoint repositori/staging (${tech.isSpa ? "Prioritaskan endpoint API & assets bundle" : "Prioritaskan direct server files & dynamic queries"}).`;
+      scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Passive OSINT subdomain reconnaissance via subfinder, memetakan arsip publik CDX, dan kebocoran endpoint staging/repositori (${tech.isSpa ? "Prioritaskan endpoint API & assets bundle" : "Prioritaskan direct server files & dynamic queries"}).`;
+      oneliners.push({
+        tool: "subfinder",
+        command: `subfinder -d "${host}" -all -silent | httpx -title -status-code -tech-detect -silent`,
+        description: "Passive Subdomain Enumeration & HTTP verification (ProjectDiscovery Subfinder + HTTPX)",
+        category: "subdomain-enum",
+      });
       oneliners.push({
         tool: "curl",
         command: `curl -s -k "https://web.archive.org/cdx/search/cdx?url=${host}/*&output=json&limit=100&fl=original,statuscode" | jq -r '.[][0]' | grep -E '\\.(env|bak|sql|tar|zip|config)$'`,
@@ -188,17 +194,35 @@ export function getAdaptiveScenario(
       break;
 
     case "WSTG-INFO-02":
-      scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Fingerprint daemon server origin vs edge proxy. Mengirim probe metode non-standar (BADMETHOD/TRACE) untuk memicu error page disclosure serta memverifikasi server_tokens header.`;
+      scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Fingerprint daemon server origin vs edge proxy via httpx & nuclei tech templates. Mengirim probe metode non-standar (BADMETHOD/TRACE) untuk memicu error page disclosure serta memverifikasi server_tokens header.`;
+      oneliners.push({
+        tool: "httpx",
+        command: `httpx -u "${cleanUrl}" -status-code -server -title -tech-detect -web-server -silent`,
+        description: "Web Server fingerprinting & tech detection presisi tinggi (ProjectDiscovery HTTPX)",
+        category: "technology-audit",
+      });
+      oneliners.push({
+        tool: "nuclei",
+        command: `nuclei -u "${cleanUrl}" -tags tech,server,osint -severity info -silent`,
+        description: "Evaluasi fingerprint daemon server menggunakan template Nuclei",
+        category: "technology-audit",
+      });
       oneliners.push({
         tool: "curl",
         command: `curl -sI -k "${cleanUrl}" -H "User-Agent: Mozilla/5.0" | grep -Ei "(Server|X-Powered-By|X-AspNet|Via|CF-RAY)"`,
-        description: "Ekstrak header identifikasi server, proxy, dan backend runtime",
+        description: "Ekstrak header identifikasi server, proxy, dan backend runtime via curl",
         category: "technology-audit",
       });
       break;
 
     case "WSTG-INFO-03":
-      scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Fuzzing metadata metafiles, RFC standard directories (.well-known/*, security.txt, sitemap.xml), dan file indexing policies (robots.txt, crossdomain.xml).`;
+      scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Inspeksi file metadata (robots.txt, sitemap.xml, security.txt) menggunakan ffuf dan Nuclei exposure templates untuk menemukan rute sensitif tersembunyi.`;
+      oneliners.push({
+        tool: "nuclei",
+        command: `nuclei -u "${cleanUrl}" -tags robots,sitemap,security-txt -severity info,low -silent`,
+        description: "Audit keberadaan dan paparan file metadata server menggunakan template Nuclei",
+        category: "technology-audit",
+      });
       oneliners.push({
         tool: "ffuf",
         command: `ffuf -u "${cleanUrl}/FUZZ" -w - -mc 200,301,302,403 -ac -rate 30 << 'EOF'\nrobots.txt\nsitemap.xml\n.well-known/security.txt\n.well-known/openid-configuration\ncrossdomain.xml\nclientaccesspolicy.xml\nEOF`,
@@ -209,7 +233,7 @@ export function getAdaptiveScenario(
 
     case "WSTG-INFO-04":
       if (isSpring) {
-        scenario = `Target terdeteksi menggunakan Spring Boot. Skenario adaptif: Enumerasi konsol monitoring Java (Actuator, H2-Console, Eureka, Swagger-UI, Admin Server) dan multi-tenant virtual host discovery.`;
+        scenario = `Target terdeteksi menggunakan Spring Boot. Skenario adaptif: Enumerasi konsol monitoring Java (Actuator, H2-Console, Eureka, Swagger-UI, Admin Server) via httpx & nuclei panel templates.`;
       } else if (isWp) {
         scenario = `Target terdeteksi menggunakan WordPress CMS. Skenario adaptif: Enumerasi antarmuka administratif COTS (/wp-admin/, /phpmyadmin/), portal monitoring, dan multi-site tenant host routing.`;
       } else if (isNext) {
@@ -217,6 +241,18 @@ export function getAdaptiveScenario(
       } else {
         scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Memeriksa multi-tenancy, mounted administrative apps (Grafana, Jenkins, phpMyAdmin), dan host-header virtual host routing.`;
       }
+      oneliners.push({
+        tool: "nuclei",
+        command: `nuclei -u "${cleanUrl}" -tags panel,admin,dashboard,login -severity info,low -silent`,
+        description: "Deteksi portal administrasi infrastruktur terbuka menggunakan template Nuclei",
+        category: "technology-audit",
+      });
+      oneliners.push({
+        tool: "httpx",
+        command: `httpx -u "${cleanUrl}" -path /grafana,/jenkins,/kibana,/phpmyadmin,/admin,/portal -status-code -title -silent`,
+        description: "Probing multi-path mount administrative sub-applications via HTTPX",
+        category: "technology-audit",
+      });
       oneliners.push({
         tool: "ffuf",
         command: `ffuf -u "${cleanUrl}/FUZZ" -w - -mc 200,301,302,401,403 -ac -rate 40 << 'EOF'\nadmin\nportal\ngrafana\njenkins\nkibana\nphpmyadmin\nswagger\napi-docs\nEOF`,
@@ -227,12 +263,24 @@ export function getAdaptiveScenario(
 
     case "WSTG-INFO-05":
       if (isNext) {
-        scenario = `Target Next.js: Skenario adaptif berfokus pada hunting JavaScript sourcemaps (.js.map), client build manifests (_buildManifest.js), NEXT_DATA JSON payload exposure, dan file .env / .git terbuka.`;
+        scenario = `Target Next.js: Skenario adaptif menggunakan Katana web crawler (-jc -kf all) untuk menguras JavaScript sourcemaps (.js.map), client build manifests (_buildManifest.js), NEXT_DATA leaks, dan Nuclei exposure templates.`;
       } else if (isLaravel) {
         scenario = `Target Laravel: Skenario adaptif berfokus pada audit exposed .env file, storage/logs/laravel.log, composer.json/lock, dan Ignition debug handler.`;
       } else {
-        scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Hunting kebocoran konfigurasi (.env, .git/HEAD, docker-compose.yml, backup file .bak/.sql), HTML comments, dan JavaScript sourcemaps.`;
+        scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Hunting kebocoran konfigurasi (.env, .git/HEAD, docker-compose.yml, backup file .bak/.sql), HTML comments, dan JavaScript sourcemaps via Katana crawler dan Nuclei.`;
       }
+      oneliners.push({
+        tool: "katana",
+        command: `katana -u "${cleanUrl}" -jc -kf all -fx -silent | grep -Ei "\\.(env|git|map|bak|sql|config|json)$"`,
+        description: "Deep crawling & parsing asset JavaScript untuk mendeteksi file sensitif (ProjectDiscovery Katana)",
+        category: "crawling-spidering",
+      });
+      oneliners.push({
+        tool: "nuclei",
+        command: `nuclei -u "${cleanUrl}" -tags exposure,config,token,git,env -severity info,low,medium -silent`,
+        description: "Audit kebocoran file rahasia (.env, .git, tokens) menggunakan template Nuclei",
+        category: "vulnerability-probe",
+      });
       oneliners.push({
         tool: "ffuf",
         command: `ffuf -u "${cleanUrl}/FUZZ" -w - -mc 200,301,302,403 -ac -rate 40 << 'EOF'\n.env\n.git/HEAD\n.git/config\ndocker-compose.yml\npackage.json\ncomposer.json\nweb.config\nbackup.zip\nEOF`,
@@ -248,7 +296,19 @@ export function getAdaptiveScenario(
       break;
 
     case "WSTG-INFO-06":
-      scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Active Directory Fuzzing via ffuf/dirsearch, attack surface mapping, REST/GraphQL documentation discovery, dan testing HTTP methods berisiko (TRACE/OPTIONS/PUT).`;
+      scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Active Katana crawler (-jc -form-extraction) memetakan attack surface & form fields, ffuf directory fuzzing, Nuclei API/Swagger discovery, dan HTTP method testing (TRACE/OPTIONS).`;
+      oneliners.push({
+        tool: "katana",
+        command: `katana -u "${cleanUrl}" -d 3 -jc -fx -silent`,
+        description: "Spidering seluruh entry point, parameter query, dan form input (ProjectDiscovery Katana)",
+        category: "crawling-spidering",
+      });
+      oneliners.push({
+        tool: "nuclei",
+        command: `nuclei -u "${cleanUrl}" -tags swagger,openapi,graphql -severity info,low -silent`,
+        description: "Audit dokumentasi API terbuka & GraphQL introspection via template Nuclei",
+        category: "api-discovery",
+      });
       oneliners.push({
         tool: "ffuf",
         command: `ffuf -u "${cleanUrl}/FUZZ" -w /usr/share/seclists/Discovery/Web-Content/raft-medium-directories.txt -mc 200,301,302,401,403 -ac -rate 50 -H "User-Agent: Mozilla/5.0"`,
@@ -270,18 +330,36 @@ export function getAdaptiveScenario(
       break;
 
     case "WSTG-INFO-07":
-      scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Memetakan user journeys, flow autentikasi/registrasi, endpoint API multi-step, dan logika transisi state untuk potensi parameter tampering.`;
+      scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Memetakan user journeys, flow autentikasi/registrasi, endpoint API multi-step, dan logika transisi state via Katana crawler dan HTTPX redirect tracer.`;
+      oneliners.push({
+        tool: "katana",
+        command: `katana -u "${cleanUrl}" -d 4 -strategy breadth-first -crawl-duration 2m -silent`,
+        description: "Pemetaan transisi state dan alur eksekusi aplikasi menggunakan Katana crawler",
+        category: "crawling-spidering",
+      });
+      oneliners.push({
+        tool: "httpx",
+        command: `httpx -u "${cleanUrl}" -follow-redirects -location -status-code -silent`,
+        description: "Pelacakan alur rantai pengalihan URL (Redirect Chains Tracer via HTTPX)",
+        category: "api-discovery",
+      });
       oneliners.push({
         tool: "ffuf",
         command: `ffuf -u "${cleanUrl}/FUZZ" -w - -mc 200,301,302,401 -ac << 'EOF'\nlogin\nregister\nforgot-password\nreset-password\ncheckout\ncart\nprofile\naccount\napi/v1/user\nEOF`,
-        description: "Fuzzing alur bisnis kritis dan transisi state aplikasi",
+        description: "Fuzzing alur bisnis kritis dan transisi state aplikasi via ffuf",
         category: "api-discovery",
       });
       break;
 
     case "WSTG-INFO-08":
       if (isSpring) {
-        scenario = `Target Spring Boot: Skenario adaptif berfokus pada probing rute Actuator (/actuator/env, /actuator/heapdump, /actuator/mappings, /actuator/logfile), validasi false-positive SPA, dan error trace JVM.`;
+        scenario = `Target Spring Boot: Skenario adaptif berfokus pada probing rute Actuator (/actuator/env, /actuator/heapdump, /actuator/mappings), validasi false-positive SPA, dan Nuclei Spring Boot templates.`;
+        oneliners.push({
+          tool: "nuclei",
+          command: `nuclei -u "${cleanUrl}" -tags springboot,actuator -severity info,low,medium -silent`,
+          description: "Audit rute Spring Boot Actuator dan console debugger via Nuclei templates",
+          category: "vulnerability-probe",
+        });
         oneliners.push({
           tool: "ffuf",
           command: `ffuf -u "${cleanUrl}/actuator/FUZZ" -w - -mc 200,401,403 << 'EOF'\nenv\nhealth\nmappings\nheapdump\nbeans\nlogfile\nmetrics\nsessions\nEOF`,
@@ -289,7 +367,13 @@ export function getAdaptiveScenario(
           category: "vulnerability-probe",
         });
       } else if (isLaravel) {
-        scenario = `Target Laravel: Skenario adaptif berfokus pada probing /_ignition/health-check, /telescope, /horizon, /nova, rute profiler, dan leak Laravel session cookies.`;
+        scenario = `Target Laravel: Skenario adaptif berfokus pada probing /_ignition/health-check, /telescope, /horizon, /nova, rute profiler, dan Nuclei Laravel templates.`;
+        oneliners.push({
+          tool: "nuclei",
+          command: `nuclei -u "${cleanUrl}" -tags laravel,debug -severity info,low,medium -silent`,
+          description: "Audit endpoint debug Laravel Ignition & Telescope via Nuclei templates",
+          category: "vulnerability-probe",
+        });
         oneliners.push({
           tool: "ffuf",
           command: `ffuf -u "${cleanUrl}/FUZZ" -w - -mc 200,302,403 << 'EOF'\n_ignition/health-check\ntelescope\nhorizon\nnova\n_debugbar\nEOF`,
@@ -297,7 +381,13 @@ export function getAdaptiveScenario(
           category: "vulnerability-probe",
         });
       } else if (isNext) {
-        scenario = `Target Next.js: Skenario adaptif berfokus pada analisis client bundles, Next.js Server Action identifiers, API routes (api/*), dan bypass middleware headers (x-middleware-prefetch).`;
+        scenario = `Target Next.js: Skenario adaptif berfokus pada analisis client bundles, Next.js Server Action identifiers, API routes (api/*), dan bypass middleware headers.`;
+        oneliners.push({
+          tool: "nuclei",
+          command: `nuclei -u "${cleanUrl}" -tags nextjs -severity info,low -silent`,
+          description: "Audit security headers dan endpoint exposure Next.js via Nuclei templates",
+          category: "vulnerability-probe",
+        });
         oneliners.push({
           tool: "curl",
           command: `curl -s -k "${cleanUrl}/_next/static/development/_devMiddlewareManifest.json" -I`,
@@ -305,7 +395,13 @@ export function getAdaptiveScenario(
           category: "technology-audit",
         });
       } else {
-        scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Menganalisis cookie signatures, header framework, rute debugging umum, dan banner runtime.`;
+        scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Menganalisis cookie signatures, header framework, rute debugging umum, dan banner runtime via Nuclei & ffuf.`;
+        oneliners.push({
+          tool: "nuclei",
+          command: `nuclei -u "${cleanUrl}" -tags tech,framework -severity info,low -silent`,
+          description: "Deteksi framework web dan debug routes via template Nuclei",
+          category: "technology-audit",
+        });
         oneliners.push({
           tool: "ffuf",
           command: `ffuf -u "${cleanUrl}/FUZZ" -w - -mc 200,301,302,401,403 << 'EOF'\nactuator/health\n_ignition/health-check\n_profiler/\ntelescope/\nswagger-ui.html\nEOF`,
@@ -317,7 +413,13 @@ export function getAdaptiveScenario(
 
     case "WSTG-INFO-09":
       if (isWp) {
-        scenario = `Target WordPress: Skenario adaptif mengeksekusi enumerasi plugin populer (/wp-content/plugins/*), REST API user enumeration (/wp-json/wp/v2/users), uji XML-RPC multicall, dan file dokumentasi bawaan (readme.html).`;
+        scenario = `Target WordPress: Skenario adaptif mengeksekusi enumerasi plugin populer (/wp-content/plugins/*), REST API user enumeration (/wp-json/wp/v2/users), uji XML-RPC multicall, dan Nuclei WordPress templates.`;
+        oneliners.push({
+          tool: "nuclei",
+          command: `nuclei -u "${cleanUrl}" -tags wordpress,wp-plugin,cms -severity info,low -silent`,
+          description: "Audit CMS WordPress dan enumerasi plugin rentan menggunakan template Nuclei",
+          category: "vulnerability-probe",
+        });
         oneliners.push({
           tool: "ffuf",
           command: `ffuf -u "${cleanUrl}/wp-content/plugins/FUZZ" -w /usr/share/seclists/Discovery/Web-Content/CMS/wp-plugins.fuzz.txt -mc 200,301,302,403 -rate 50`,
@@ -331,22 +433,40 @@ export function getAdaptiveScenario(
           category: "technology-audit",
         });
       } else {
-        scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Audit aplikasi COTS/CMS (WordPress, Drupal, Joomla, Strapi, Ghost, Keycloak) serta sanitasi tag meta generator dan file dokumentasi instalasi.`;
+        scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Audit aplikasi COTS/CMS (WordPress, Drupal, Joomla, Strapi, Ghost, Keycloak) serta sanitasi tag meta generator via Nuclei CMS templates.`;
+        oneliners.push({
+          tool: "nuclei",
+          command: `nuclei -u "${cleanUrl}" -tags cms,drupal,joomla,strapi -severity info,low -silent`,
+          description: "Audit identitas COTS/CMS populer via template Nuclei",
+          category: "technology-audit",
+        });
         oneliners.push({
           tool: "ffuf",
           command: `ffuf -u "${cleanUrl}/FUZZ" -w - -mc 200,301,302 << 'EOF'\nwp-login.php\nreadme.html\nadministrator/\nuser/login\nadmin/login\nghost/\nstrapi/\nEOF`,
-          description: "Fuzzing interface login dan dokumentasi CMS populer",
+          description: "Fuzzing interface login dan dokumentasi CMS populer via ffuf",
           category: "directory-fuzzing",
         });
       }
       break;
 
     case "WSTG-INFO-10":
-      scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Pemetaan edge reverse proxy (Cloudflare/Nginx), Web Application Firewall (WAF), load balancing headers, dan pengujian origin IP disclosure via direct Host bypass.`;
+      scenario = `Target stack: [${stackSummary}]. Skenario adaptif: Pemetaan edge reverse proxy (Cloudflare/Nginx), Web Application Firewall (WAF), load balancing headers, dan evaluasi CDN via HTTPX & Nuclei WAF templates.`;
+      oneliners.push({
+        tool: "httpx",
+        command: `httpx -u "${cleanUrl}" -cdn -probe -status-code -ip -title -server -silent`,
+        description: "Deteksi CDN perimeter dan origin IP disclosure via HTTPX",
+        category: "technology-audit",
+      });
+      oneliners.push({
+        tool: "nuclei",
+        command: `nuclei -u "${cleanUrl}" -tags waf,cdn,reverse-proxy -severity info -silent`,
+        description: "Identifikasi Web Application Firewall (WAF) & Cloud edge via template Nuclei",
+        category: "technology-audit",
+      });
       oneliners.push({
         tool: "curl",
         command: `curl -sI -k "${cleanUrl}" -H "X-Forwarded-For: 127.0.0.1" -H "X-Originating-IP: 127.0.0.1" -H "X-Real-IP: 127.0.0.1"`,
-        description: "Pengujian respon header terhadap reverse proxy bypass headers",
+        description: "Pengujian respon header terhadap reverse proxy bypass headers via curl",
         category: "technology-audit",
       });
       break;

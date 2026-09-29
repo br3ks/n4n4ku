@@ -73,10 +73,26 @@ async function runSelfCheck() {
   assert(words.includes("_ignition/health-check"), "Wordlist Laravel harus memuat _ignition");
   console.log(`✓ Adaptive Wordlist generated: ${words.length} items`);
 
-  const ffufBin = await checkFfufAvailable();
-  console.log(`✓ ffuf binary status on host: ${ffufBin ? `Installed (${ffufBin})` : "Not installed (will use native parallel fallback)"}`);
+  // Test ProjectDiscovery Suite Integration
+  console.log("\nTesting ProjectDiscovery Suite (Katana, Nuclei, Subfinder)...");
+  const { runKatanaCrawler, runNucleiInfoAudit, runSubfinderRecon } = await import("../src/wstg/projectdiscovery.js");
+  
+  const katanaRes = await runKatanaCrawler("http://localhost:3000", { maxDepth: 1 });
+  assert.strictEqual(katanaRes.tool, "katana");
+  assert(katanaRes.rawOutput.includes("katana -u"), "Output Katana harus memuat banner CLI otentik");
+  console.log("✓ Katana Crawler Engine verified successfully:", katanaRes.engine);
 
-  console.log("\n✅ ALL WSTG 4.2 SUB-AGENTS & ENHANCED ENGINES VERIFIED SUCCESSFULLY!\n");
+  const nucleiRes = await runNucleiInfoAudit("http://localhost:3000", tech, "tech");
+  assert.strictEqual(nucleiRes.tool, "nuclei");
+  assert(nucleiRes.rawOutput.includes("nuclei -u"), "Output Nuclei harus memuat banner CLI otentik");
+  console.log("✓ Nuclei Audit Engine verified successfully:", nucleiRes.engine);
+
+  const subfinderRes = await runSubfinderRecon("localhost");
+  assert.strictEqual(subfinderRes.tool, "subfinder");
+  assert(subfinderRes.rawOutput.includes("subfinder -d"), "Output Subfinder harus memuat banner CLI otentik");
+  console.log("✓ Subfinder Engine verified successfully:", subfinderRes.engine);
+
+  console.log("\n✅ ALL WSTG 4.2 SUB-AGENTS & PROJECTDISCOVERY ENGINES VERIFIED SUCCESSFULLY!\n");
 }
 
 runSelfCheck().catch((err) => {
