@@ -41,7 +41,7 @@
 }
 
 /* Markdown Prose Styling */
-#reportContainer h1 {
+#reportContainer h1, #wstgReportContainer h1 {
   font-size: 1.5rem;
   font-weight: 800;
   color: #ffffff;
@@ -50,35 +50,35 @@
   border-bottom: 1px solid #1e263d;
   padding-bottom: 0.5rem;
 }
-#reportContainer h2 {
+#reportContainer h2, #wstgReportContainer h2 {
   font-size: 1.25rem;
   font-weight: 700;
   color: #38bdf8;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
 }
-#reportContainer h3 {
+#reportContainer h3, #wstgReportContainer h3 {
   font-size: 1.05rem;
   font-weight: 600;
   color: #34d399;
   margin-top: 1rem;
   margin-bottom: 0.35rem;
 }
-#reportContainer p {
+#reportContainer p, #wstgReportContainer p {
   margin-bottom: 0.75rem;
   line-height: 1.6;
   color: #cbd5e1;
 }
-#reportContainer ul {
+#reportContainer ul, #wstgReportContainer ul {
   list-style-type: disc;
   margin-left: 1.5rem;
   margin-bottom: 1rem;
   color: #cbd5e1;
 }
-#reportContainer li {
+#reportContainer li, #wstgReportContainer li {
   margin-bottom: 0.35rem;
 }
-#reportContainer code {
+#reportContainer code, #wstgReportContainer code {
   background: #161e31;
   color: #a7f3d0;
   padding: 0.15rem 0.4rem;
@@ -86,7 +86,26 @@
   font-family: monospace;
   font-size: 0.85em;
 }
-#reportContainer hr {
+#reportContainer hr, #wstgReportContainer hr {
   border-color: #1e263d;
   margin: 1.5rem 0;
+}
+#reportContainer table, #wstgReportContainer table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-family: monospace;
+  font-size: 0.85em;
+}
+#reportContainer th, #wstgReportContainer th {
+  background: #12182b;
+  color: #38bdf8;
+  border: 1px solid #1e263d;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+#reportContainer td, #wstgReportContainer td {
+  border: 1px solid #1e263d;
+  padding: 0.5rem 0.75rem;
+  color: #cbd5e1;
 }

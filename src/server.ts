@@ -5,6 +5,9 @@ import dotenv from "dotenv";
 import { createSession, getSession, listSessions, saveSessionToDisk } from "./store/state.js";
 import { ReconOrchestrator } from "./agent/orchestrator.js";
 import { AgentEvent } from "./agent/events.js";
+import { createAuditSession, getAuditSession, listAuditSessions } from "./wstg/store.js";
+import { WstgAuditOrchestrator } from "./wstg/orchestrator.js";
+import { WstgEvent } from "./wstg/types.js";
 
 dotenv.config();
 
@@ -123,6 +126,125 @@ app.get("/api/scan/:id", (req, res) => {
 // List recent scans
 app.get("/api/scans", (req, res) => {
   res.json(listSessions());
+});
+
+// ==========================================
+// OWASP WSTG 4.2 Information Gathering API
+// ==========================================
+
+// Launch new WSTG 4.2 Audit
+app.post("/api/wstg/audit", (req, res) => {
+  const { url, concurrency } = req.body;
+  if (!url || typeof url !== "string") {
+    res.status(400).json({ error: "Parameter 'url' wajib diisi (contoh: https://example.com)." });
+    return;
+  }
+
+  let formattedUrl = url.trim();
+  if (!formattedUrl.startsWith("http://") && !formattedUrl.startsWith("https://")) {
+    formattedUrl = `https://${formattedUrl}`;
+  }
+
+  let domain = "";
+  try {
+    const parsed = new URL(formattedUrl);
+    domain = parsed.hostname;
+  } catch {
+    res.status(400).json({ error: "Format URL tidak valid." });
+    return;
+  }
+
+  const session = createAuditSession(formattedUrl, domain);
+  const orchestrator = new WstgAuditOrchestrator(
+    session,
+    {
+      apiKey: process.env.LLM_API_KEY || process.env.GEMINI_API_KEY,
+      baseUrl: process.env.LLM_BASE_URL,
+      model: process.env.LLM_MODEL,
+    },
+    concurrency ? Number(concurrency) : 2
+  );
+
+  // Background execution
+  orchestrator.start().catch((err) => {
+    console.error("[WSTG Error]", err);
+  });
+
+  res.status(202).json({
+    auditId: session.id,
+    targetUrl: session.targetUrl,
+    targetDomain: session.targetDomain,
+    status: session.status,
+  });
+});
+
+// Real-time SSE Telemetry for WSTG Audit
+app.get("/api/wstg/audit/:id/stream", (req, res) => {
+  const session = getAuditSession(req.params.id);
+  if (!session) {
+    res.status(404).json({ error: "Sesi WSTG Audit tidak ditemukan." });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders?.();
+
+  // Initial snapshot
+  const initialPayload = {
+    type: "snapshot",
+    id: session.id,
+    targetUrl: session.targetUrl,
+    targetDomain: session.targetDomain,
+    status: session.status,
+    results: session.results,
+    findings: session.findings,
+    report: session.report,
+  };
+  res.write(`data: ${JSON.stringify(initialPayload)}\n\n`);
+
+  // Stream live WSTG events
+  const onEvent = (event: WstgEvent) => {
+    res.write(`data: ${JSON.stringify(event)}\n\n`);
+  };
+
+  session.eventBus.on("wstg_event", onEvent);
+
+  // Heartbeat every 15s
+  const heartbeat = setInterval(() => {
+    res.write(`: heartbeat\n\n`);
+  }, 15000);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    session.eventBus.off("wstg_event", onEvent);
+  });
+});
+
+// Get WSTG session details
+app.get("/api/wstg/audit/:id", (req, res) => {
+  const session = getAuditSession(req.params.id);
+  if (!session) {
+    res.status(404).json({ error: "Audit tidak ditemukan." });
+    return;
+  }
+  res.json({
+    id: session.id,
+    targetUrl: session.targetUrl,
+    targetDomain: session.targetDomain,
+    status: session.status,
+    startedAt: session.startedAt,
+    completedAt: session.completedAt,
+    results: session.results,
+    findings: session.findings,
+    report: session.report,
+  });
+});
+
+// List recent WSTG audits
+app.get("/api/wstg/audits", (req, res) => {
+  res.json(listAuditSessions());
 });
 
 // Fallback index.html for SPA

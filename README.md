@@ -13,8 +13,23 @@ Agentic AI tool untuk domain reconnaissance & Attack Surface Management (ASM) de
   - `resolve_subdomain_batch`: Mass DNS Resolver paralel dengan deteksi IP aktif & CNAME mapping.
   - `probe_http_batch`: HTTP/TLS Fingerprinting untuk ekstraksi status code, server banner, web tech, dan anomali.
   - `inspect_takeover_risk`: Deteksi potensi dangling CNAME ke layanan cloud (AWS S3, CloudFront, Azure, GitHub Pages, dll.).
+- **OWASP WSTG v4.2 Security Audit (Information Gathering)**:
+  - Menu baru untuk audit keamanan web mendalam berdasarkan standar OWASP WSTG 4.2.
+  - **10 Dedicated Sub-Agents** dengan skenario uji terfokus:
+    1. `WSTG-INFO-01`: Search Engine Discovery (`SearchEngineReconSubagent`)
+    2. `WSTG-INFO-02`: Fingerprint Web Server (`WebServerFingerprintSubagent`)
+    3. `WSTG-INFO-03`: Review Webserver Metafiles (`WebserverMetafilesSubagent`)
+    4. `WSTG-INFO-04`: Enumerate Applications on Webserver (`AppEnumerationSubagent`)
+    5. `WSTG-INFO-05`: Review Webpage Content for Information Leakage (`ContentLeakageSubagent`)
+    6. `WSTG-INFO-06`: Identify Application Entry Points (`EntryPointsSubagent`)
+    7. `WSTG-INFO-07`: Map Execution Paths Through Application (`ExecutionPathsSubagent`)
+    8. `WSTG-INFO-08`: Fingerprint Web Application Framework (`FrameworkFingerprintSubagent`)
+    9. `WSTG-INFO-09`: Fingerprint Web Application (`AppFingerprintSubagent`)
+    10. `WSTG-INFO-10`: Map Application Architecture (`ArchitectureMapSubagent`)
+  - Sub-agent checklist matrix, realtime log stream, findings ledger, dan dynamic modal detail.
+  - Laporan audit resmi OWASP WSTG 4.2 yang digenerate oleh AI dengan rekomendasi remediasi taktis.
 - **High-Visibility Cockpit (Web UI)**:
-  - 3-Panel Dashboard: Pipeline Stepper, Live Thought & Action Terminal, Realtime Discovered Assets Table.
+  - Dual Mode Switcher: **Domain Recon** &amp; **WSTG 4.2 Audit**.
   - Full Live Telemetry via Server-Sent Events (SSE).
 - **Multi-Provider AI Ready**: Terintegrasi langsung dengan 9router (`http://localhost:20128/v1` model `wombo`), Google Gemini, atau OpenAI-compatible endpoints lainnya.
 - **Docker Ready**: Dilengkapi utilitas audit jaringan bawaan (`bind-tools`, `curl`, `whois`, `openssl`, `tini`).

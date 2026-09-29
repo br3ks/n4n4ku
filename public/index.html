@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>n4n4ku // Autonomous Recon Agent</title>
+  <title>n4n4ku // Autonomous Recon & WSTG 4.2 Audit Agent</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons CDN -->
@@ -41,27 +41,48 @@
 </head>
 <body class="bg-[#070a12] text-slate-200 font-sans antialiased min-h-screen flex flex-col selection:bg-emerald-500 selection:text-black">
 
-  <!-- TOP HEADER & INPUT BAR -->
+  <!-- TOP HEADER & NAVIGATION -->
   <header class="border-b border-[#1e263d] bg-[#0c101c]/90 backdrop-blur sticky top-0 z-50 px-6 py-3.5">
-    <div class="max-w-[1700px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+    <div class="max-w-[1700px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-4">
       
-      <!-- LOGO -->
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-mono font-bold text-lg shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-          &gt;_
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="font-mono font-extrabold text-xl tracking-wider text-white">n4n4ku</span>
-            <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-emerald-950 text-emerald-400 border border-emerald-800">AGENTIC RECON</span>
+      <!-- LOGO & MENU TABS -->
+      <div class="flex items-center gap-6 w-full lg:w-auto justify-between lg:justify-start">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-mono font-bold text-lg shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+            &gt;_
           </div>
-          <p class="text-xs text-slate-400">Autonomous Domain Recon &amp; Attack Surface Intelligence</p>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-extrabold text-xl tracking-wider text-white">n4n4ku</span>
+              <span class="px-2 py-0.5 text-[10px] font-mono rounded bg-emerald-950 text-emerald-400 border border-emerald-800">AGENTIC SEC</span>
+            </div>
+            <p class="text-xs text-slate-400">Autonomous Domain Recon &amp; OWASP WSTG Audit</p>
+          </div>
         </div>
+
+        <!-- NAVIGATION TABS -->
+        <nav class="flex items-center gap-1 bg-[#12182b] p-1 rounded-xl border border-[#232c47]">
+          <button
+            id="tabReconBtn"
+            class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all bg-emerald-500 text-slate-950 shadow-[0_0_12px_rgba(16,185,129,0.3)] cursor-pointer"
+          >
+            <i data-lucide="globe" class="w-3.5 h-3.5"></i>
+            <span>Domain Recon</span>
+          </button>
+          <button
+            id="tabWstgBtn"
+            class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all text-slate-400 hover:text-white cursor-pointer"
+          >
+            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+            <span>WSTG 4.2 Audit</span>
+            <span class="px-1.5 py-0.2 rounded text-[9px] bg-cyan-950 text-cyan-400 border border-cyan-800">NEW</span>
+          </button>
+        </nav>
       </div>
 
-      <!-- SCAN INPUT FORM -->
-      <form id="scanForm" class="flex items-center gap-2 w-full md:w-auto">
-        <div class="relative flex-1 md:w-96">
+      <!-- RECON INPUT FORM -->
+      <form id="scanForm" class="flex items-center gap-2 w-full lg:w-auto">
+        <div class="relative flex-1 lg:w-80">
           <i data-lucide="globe" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
           <input
             type="text"
@@ -81,264 +102,468 @@
         <button
           type="submit"
           id="startBtn"
-          class="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-5 py-2 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer"
+          class="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer"
         >
           <i data-lucide="play" class="w-4 h-4 fill-current"></i>
           <span>Launch Recon</span>
         </button>
-      </form>
 
-      <!-- ACTIVE STATUS & TIMER -->
-      <div class="flex items-center gap-3 font-mono text-xs">
-        <div id="statusBadge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+        <div id="statusBadge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-mono text-xs whitespace-nowrap">
           <span class="w-2 h-2 rounded-full bg-slate-500"></span>
           <span id="statusText">IDLE</span>
         </div>
-        <div id="timerDisplay" class="text-slate-400 bg-[#12182b] px-3 py-1.5 rounded border border-[#1e263d]">
+        <div id="timerDisplay" class="text-slate-400 bg-[#12182b] px-3 py-1.5 rounded border border-[#1e263d] font-mono text-xs whitespace-nowrap">
           ⏱️ 00:00
         </div>
-      </div>
+      </form>
+
+      <!-- WSTG INPUT FORM (Hidden initially) -->
+      <form id="wstgForm" class="hidden items-center gap-2 w-full lg:w-auto">
+        <div class="relative flex-1 lg:w-96">
+          <i data-lucide="shield" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-400"></i>
+          <input
+            type="text"
+            id="wstgUrlInput"
+            required
+            placeholder="Target URL (cth: https://example.com)"
+            class="w-full bg-[#12182b] border border-[#232c47] rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 font-mono transition-all"
+          />
+        </div>
+
+        <select id="wstgConcurrencyInput" class="bg-[#12182b] border border-[#232c47] rounded-lg px-3 py-2 text-xs text-slate-300 font-mono focus:outline-none focus:border-cyan-500">
+          <option value="1">Conc: 1 (Sequential)</option>
+          <option value="2" selected>Conc: 2 (Balanced)</option>
+          <option value="4">Conc: 4 (Fast)</option>
+        </select>
+
+        <button
+          type="submit"
+          id="wstgStartBtn"
+          class="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap cursor-pointer"
+        >
+          <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+          <span>Launch WSTG Audit</span>
+        </button>
+
+        <div id="wstgStatusBadge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 font-mono text-xs whitespace-nowrap">
+          <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+          <span id="wstgStatusText">IDLE</span>
+        </div>
+        <div id="wstgTimerDisplay" class="text-slate-400 bg-[#12182b] px-3 py-1.5 rounded border border-[#1e263d] font-mono text-xs whitespace-nowrap">
+          ⏱️ 00:00
+        </div>
+      </form>
 
     </div>
   </header>
 
-  <!-- METRIC CARDS -->
-  <section class="max-w-[1700px] mx-auto w-full px-6 pt-6">
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      
-      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
-        <div>
-          <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Discovered FQDNs</p>
-          <h3 id="metricSubdomains" class="text-2xl font-bold font-mono text-cyan-400 mt-1">0</h3>
-        </div>
-        <div class="w-10 h-10 rounded-lg bg-cyan-950/40 border border-cyan-800/50 flex items-center justify-center text-cyan-400">
-          <i data-lucide="database" class="w-5 h-5"></i>
-        </div>
-      </div>
-
-      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
-        <div>
-          <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Resolved Live Hosts</p>
-          <h3 id="metricAlive" class="text-2xl font-bold font-mono text-emerald-400 mt-1">0</h3>
-        </div>
-        <div class="w-10 h-10 rounded-lg bg-emerald-950/40 border border-emerald-800/50 flex items-center justify-center text-emerald-400">
-          <i data-lucide="radio" class="w-5 h-5"></i>
-        </div>
-      </div>
-
-      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
-        <div>
-          <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Active HTTP Services</p>
-          <h3 id="metricHttp" class="text-2xl font-bold font-mono text-indigo-400 mt-1">0</h3>
-        </div>
-        <div class="w-10 h-10 rounded-lg bg-indigo-950/40 border border-indigo-800/50 flex items-center justify-center text-indigo-400">
-          <i data-lucide="server" class="w-5 h-5"></i>
-        </div>
-      </div>
-
-      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
-        <div>
-          <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Anomalies / Risks</p>
-          <h3 id="metricAnomalies" class="text-2xl font-bold font-mono text-amber-400 mt-1">0</h3>
-        </div>
-        <div class="w-10 h-10 rounded-lg bg-amber-950/40 border border-amber-800/50 flex items-center justify-center text-amber-400">
-          <i data-lucide="shield-alert" class="w-5 h-5"></i>
-        </div>
-      </div>
-
-    </div>
-  </section>
-
-  <!-- 3-PANEL COCKPIT -->
-  <main class="max-w-[1700px] mx-auto w-full px-6 py-6 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-    <!-- PANEL 1: PIPELINE STATUS STEPPER (Col 3) -->
-    <div class="lg:col-span-3 flex flex-col gap-4">
-      
-      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-5">
-        <h4 class="font-mono text-xs uppercase tracking-wider text-slate-400 font-bold mb-4 flex items-center gap-2">
-          <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
-          Execution Pipeline
-        </h4>
-
-        <div class="space-y-4 font-mono text-xs" id="pipelineStepper">
-          <!-- Step 1 -->
-          <div class="step-item flex items-start gap-3 text-slate-500" data-phase="SCOPE_VALIDATION">
-            <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">1</div>
-            <div>
-              <p class="font-semibold text-slate-400">Scope Guard &amp; Target Validation</p>
-              <p class="text-[11px] text-slate-500">Normalisasi FQDN &amp; boundary check</p>
-            </div>
-          </div>
-          <!-- Step 2 -->
-          <div class="step-item flex items-start gap-3 text-slate-500" data-phase="PASSIVE_RECON">
-            <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">2</div>
-            <div>
-              <p class="font-semibold text-slate-400">Apex DNS &amp; Wildcard Detection</p>
-              <p class="text-[11px] text-slate-500">NS, MX, SPF, DMARC &amp; anti-wildcard</p>
-            </div>
-          </div>
-          <!-- Step 3 -->
-          <div class="step-item flex items-start gap-3 text-slate-500" data-phase="PASSIVE_RECON_CT">
-            <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">3</div>
-            <div>
-              <p class="font-semibold text-slate-400">Certificate Transparency Logs</p>
-              <p class="text-[11px] text-slate-500">crt.sh historical certificates harvest</p>
-            </div>
-          </div>
-          <!-- Step 4 -->
-          <div class="step-item flex items-start gap-3 text-slate-500" data-phase="DNS_VERIFICATION">
-            <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">4</div>
-            <div>
-              <p class="font-semibold text-slate-400">Parallel Mass DNS Resolver</p>
-              <p class="text-[11px] text-slate-500">A/CNAME check &amp; cloud takeover triage</p>
-            </div>
-          </div>
-          <!-- Step 5 -->
-          <div class="step-item flex items-start gap-3 text-slate-500" data-phase="HTTP_PROBING">
-            <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">5</div>
-            <div>
-              <p class="font-semibold text-slate-400">HTTP/TLS Fingerprinting</p>
-              <p class="text-[11px] text-slate-500">Status, title, tech stack &amp; anomaly probe</p>
-            </div>
-          </div>
-          <!-- Step 6 -->
-          <div class="step-item flex items-start gap-3 text-slate-500" data-phase="AI_ANALYSIS">
-            <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">6</div>
-            <div>
-              <p class="font-semibold text-slate-400">AI Attack Surface Synthesis</p>
-              <p class="text-[11px] text-slate-500">ReAct reasoning &amp; actionable report</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ACTIVE WORKER TELEMETRY -->
-      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-5">
-        <h4 class="font-mono text-xs uppercase tracking-wider text-slate-400 font-bold mb-3 flex items-center gap-2">
-          <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i>
-          Worker Telemetry
-        </h4>
+  <!-- ==================================================== -->
+  <!-- VIEW 1: DOMAIN RECON & ASM COCKPIT                   -->
+  <!-- ==================================================== -->
+  <div id="reconView" class="flex flex-col flex-1">
+    
+    <!-- METRIC CARDS -->
+    <section class="max-w-[1700px] mx-auto w-full px-6 pt-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         
-        <div id="workerTelemetry" class="space-y-3 font-mono text-xs">
+        <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
           <div>
-            <div class="flex justify-between text-slate-400 mb-1">
-              <span id="activeToolName">Idle</span>
-              <span id="activeToolProgress">0%</span>
-            </div>
-            <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-              <div id="toolProgressBar" class="h-full bg-emerald-500 transition-all duration-200" style="width: 0%"></div>
-            </div>
-            <p id="activeToolItem" class="text-[11px] text-slate-500 truncate mt-1">-</p>
+            <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Discovered FQDNs</p>
+            <h3 id="metricSubdomains" class="text-2xl font-bold font-mono text-cyan-400 mt-1">0</h3>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-cyan-950/40 border border-cyan-800/50 flex items-center justify-center text-cyan-400">
+            <i data-lucide="database" class="w-5 h-5"></i>
           </div>
         </div>
-      </div>
 
-    </div>
-
-    <!-- PANEL 2: LIVE AGENT TERMINAL (Col 5) -->
-    <div class="lg:col-span-5 flex flex-col bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden min-h-[500px]">
-      
-      <!-- Terminal Header -->
-      <div class="bg-[#0a0e19] px-4 py-3 border-b border-[#1e263d] flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <div class="flex gap-1.5">
-            <span class="w-3 h-3 rounded-full bg-red-500/80"></span>
-            <span class="w-3 h-3 rounded-full bg-yellow-500/80"></span>
-            <span class="w-3 h-3 rounded-full bg-green-500/80"></span>
-          </div>
-          <span class="font-mono text-xs font-semibold text-slate-300 ml-2">agent.telemetry.log</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <button id="clearLogsBtn" class="text-[11px] font-mono text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded bg-slate-800/50 hover:bg-slate-800 border border-slate-700">Clear</button>
-        </div>
-      </div>
-
-      <!-- Terminal Body -->
-      <div id="terminalStream" class="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-2.5 max-h-[620px] scrollbar-thin">
-        <div class="text-slate-500 italic">
-          [n4n4ku] System initialized. Masukkan domain target di atas dan klik 'Launch Recon'.
-        </div>
-      </div>
-
-    </div>
-
-    <!-- PANEL 3: REALTIME ASSET MATRIX (Col 4) -->
-    <div class="lg:col-span-4 flex flex-col bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden min-h-[500px]">
-      
-      <!-- Matrix Header -->
-      <div class="bg-[#0a0e19] px-4 py-3 border-b border-[#1e263d] flex items-center justify-between">
-        <h4 class="font-mono text-xs font-semibold text-slate-300 flex items-center gap-2">
-          <i data-lucide="network" class="w-4 h-4 text-emerald-400"></i>
-          Discovered Asset Ledger
-        </h4>
-        <input
-          type="text"
-          id="assetFilter"
-          placeholder="Filter FQDN / IP..."
-          class="bg-[#12182b] border border-[#1e263d] rounded px-2.5 py-1 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-36"
-        />
-      </div>
-
-      <!-- Matrix Table -->
-      <div class="flex-1 overflow-y-auto max-h-[620px]">
-        <table class="w-full text-left font-mono text-xs">
-          <thead class="bg-[#0c101c] text-slate-400 text-[10px] uppercase border-b border-[#1e263d] sticky top-0">
-            <tr>
-              <th class="px-3 py-2">Status</th>
-              <th class="px-3 py-2">Host / Target</th>
-              <th class="px-3 py-2">IP / Info</th>
-            </tr>
-          </thead>
-          <tbody id="assetsTableBody" class="divide-y divide-[#1e263d]/50">
-            <tr>
-              <td colspan="3" class="px-4 py-8 text-center text-slate-600">
-                Belum ada aset teridentifikasi.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-    </div>
-
-  </main>
-
-  <!-- REPORT DRAWER / MODAL -->
-  <section class="max-w-[1700px] mx-auto w-full px-6 pb-12">
-    <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden shadow-2xl">
-      
-      <div class="bg-[#0c101c] px-6 py-4 border-b border-[#1e263d] flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded bg-emerald-950 border border-emerald-700/50 flex items-center justify-center text-emerald-400">
-            <i data-lucide="file-text" class="w-4 h-4"></i>
-          </div>
+        <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
           <div>
-            <h3 class="font-bold text-sm text-white">AI Attack Surface Intelligence Report</h3>
-            <p class="text-xs text-slate-400">Laporan analisis risiko terpadu digenerate otonom oleh n4n4ku AI Agent</p>
+            <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Resolved Live Hosts</p>
+            <h3 id="metricAlive" class="text-2xl font-bold font-mono text-emerald-400 mt-1">0</h3>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-emerald-950/40 border border-emerald-800/50 flex items-center justify-center text-emerald-400">
+            <i data-lucide="radio" class="w-5 h-5"></i>
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button id="copyReportBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-200 border border-slate-700 transition cursor-pointer">
-            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
-            <span>Copy Markdown</span>
-          </button>
-          <button id="downloadReportBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-xs font-mono text-slate-950 font-semibold transition cursor-pointer">
-            <i data-lucide="download" class="w-3.5 h-3.5"></i>
-            <span>Download .md</span>
-          </button>
+        <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Active HTTP Services</p>
+            <h3 id="metricHttp" class="text-2xl font-bold font-mono text-indigo-400 mt-1">0</h3>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-indigo-950/40 border border-indigo-800/50 flex items-center justify-center text-indigo-400">
+            <i data-lucide="server" class="w-5 h-5"></i>
+          </div>
         </div>
+
+        <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Anomalies / Risks</p>
+            <h3 id="metricAnomalies" class="text-2xl font-bold font-mono text-amber-400 mt-1">0</h3>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-amber-950/40 border border-amber-800/50 flex items-center justify-center text-amber-400">
+            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 3-PANEL COCKPIT -->
+    <main class="max-w-[1700px] mx-auto w-full px-6 py-6 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- PANEL 1: PIPELINE STATUS STEPPER (Col 3) -->
+      <div class="lg:col-span-3 flex flex-col gap-4">
+        
+        <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-5">
+          <h4 class="font-mono text-xs uppercase tracking-wider text-slate-400 font-bold mb-4 flex items-center gap-2">
+            <i data-lucide="layers" class="w-4 h-4 text-emerald-400"></i>
+            Execution Pipeline
+          </h4>
+
+          <div class="space-y-4 font-mono text-xs" id="pipelineStepper">
+            <div class="step-item flex items-start gap-3 text-slate-500" data-phase="SCOPE_VALIDATION">
+              <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">1</div>
+              <div>
+                <p class="font-semibold text-slate-400">Scope Guard &amp; Target Validation</p>
+                <p class="text-[11px] text-slate-500">Normalisasi FQDN &amp; boundary check</p>
+              </div>
+            </div>
+            <div class="step-item flex items-start gap-3 text-slate-500" data-phase="PASSIVE_RECON">
+              <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">2</div>
+              <div>
+                <p class="font-semibold text-slate-400">Apex DNS &amp; Wildcard Detection</p>
+                <p class="text-[11px] text-slate-500">NS, MX, SPF, DMARC &amp; anti-wildcard</p>
+              </div>
+            </div>
+            <div class="step-item flex items-start gap-3 text-slate-500" data-phase="PASSIVE_RECON_CT">
+              <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">3</div>
+              <div>
+                <p class="font-semibold text-slate-400">Certificate Transparency Logs</p>
+                <p class="text-[11px] text-slate-500">crt.sh historical certificates harvest</p>
+              </div>
+            </div>
+            <div class="step-item flex items-start gap-3 text-slate-500" data-phase="DNS_VERIFICATION">
+              <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">4</div>
+              <div>
+                <p class="font-semibold text-slate-400">Parallel Mass DNS Resolver</p>
+                <p class="text-[11px] text-slate-500">A/CNAME check &amp; cloud takeover triage</p>
+              </div>
+            </div>
+            <div class="step-item flex items-start gap-3 text-slate-500" data-phase="HTTP_PROBING">
+              <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">5</div>
+              <div>
+                <p class="font-semibold text-slate-400">HTTP/TLS Fingerprinting</p>
+                <p class="text-[11px] text-slate-500">Status, title, tech stack &amp; anomaly probe</p>
+              </div>
+            </div>
+            <div class="step-item flex items-start gap-3 text-slate-500" data-phase="AI_ANALYSIS">
+              <div class="step-icon mt-0.5 w-5 h-5 rounded border border-slate-700 flex items-center justify-center text-[10px]">6</div>
+              <div>
+                <p class="font-semibold text-slate-400">AI Attack Surface Synthesis</p>
+                <p class="text-[11px] text-slate-500">ReAct reasoning &amp; actionable report</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTIVE WORKER TELEMETRY -->
+        <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-5">
+          <h4 class="font-mono text-xs uppercase tracking-wider text-slate-400 font-bold mb-3 flex items-center gap-2">
+            <i data-lucide="cpu" class="w-4 h-4 text-cyan-400"></i>
+            Worker Telemetry
+          </h4>
+          
+          <div id="workerTelemetry" class="space-y-3 font-mono text-xs">
+            <div>
+              <div class="flex justify-between text-slate-400 mb-1">
+                <span id="activeToolName">Idle</span>
+                <span id="activeToolProgress">0%</span>
+              </div>
+              <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div id="toolProgressBar" class="h-full bg-emerald-500 transition-all duration-200" style="width: 0%"></div>
+              </div>
+              <p id="activeToolItem" class="text-[11px] text-slate-500 truncate mt-1">-</p>
+            </div>
+          </div>
+        </div>
+
       </div>
 
-      <div class="p-6 md:p-8 overflow-x-auto min-h-[200px]" id="reportContainer">
-        <div class="text-slate-600 font-mono text-xs text-center py-12">
-          Laporan intelijen akan muncul dan ter-stream secara langsung di sini setelah probe lapangan selesai.
+      <!-- PANEL 2: LIVE AGENT TERMINAL (Col 5) -->
+      <div class="lg:col-span-5 flex flex-col bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden min-h-[500px]">
+        
+        <div class="bg-[#0a0e19] px-4 py-3 border-b border-[#1e263d] flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="flex gap-1.5">
+              <span class="w-3 h-3 rounded-full bg-red-500/80"></span>
+              <span class="w-3 h-3 rounded-full bg-yellow-500/80"></span>
+              <span class="w-3 h-3 rounded-full bg-green-500/80"></span>
+            </div>
+            <span class="font-mono text-xs font-semibold text-slate-300 ml-2">agent.telemetry.log</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="clearLogsBtn" class="text-[11px] font-mono text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded bg-slate-800/50 hover:bg-slate-800 border border-slate-700">Clear</button>
+          </div>
         </div>
+
+        <div id="terminalStream" class="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-2.5 max-h-[620px] scrollbar-thin">
+          <div class="text-slate-500 italic">
+            [n4n4ku] System initialized. Masukkan domain target di atas dan klik 'Launch Recon'.
+          </div>
+        </div>
+
       </div>
 
+      <!-- PANEL 3: REALTIME ASSET MATRIX (Col 4) -->
+      <div class="lg:col-span-4 flex flex-col bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden min-h-[500px]">
+        
+        <div class="bg-[#0a0e19] px-4 py-3 border-b border-[#1e263d] flex items-center justify-between">
+          <h4 class="font-mono text-xs font-semibold text-slate-300 flex items-center gap-2">
+            <i data-lucide="network" class="w-4 h-4 text-emerald-400"></i>
+            Discovered Asset Ledger
+          </h4>
+          <input
+            type="text"
+            id="assetFilter"
+            placeholder="Filter FQDN / IP..."
+            class="bg-[#12182b] border border-[#1e263d] rounded px-2.5 py-1 text-xs font-mono text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500 w-36"
+          />
+        </div>
+
+        <div class="flex-1 overflow-y-auto max-h-[620px]">
+          <table class="w-full text-left font-mono text-xs">
+            <thead class="bg-[#0c101c] text-slate-400 text-[10px] uppercase border-b border-[#1e263d] sticky top-0">
+              <tr>
+                <th class="px-3 py-2">Status</th>
+                <th class="px-3 py-2">Host / Target</th>
+                <th class="px-3 py-2">IP / Info</th>
+              </tr>
+            </thead>
+            <tbody id="assetsTableBody" class="divide-y divide-[#1e263d]/50">
+              <tr>
+                <td colspan="3" class="px-4 py-8 text-center text-slate-600">
+                  Belum ada aset teridentifikasi.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- RECON REPORT DRAWER -->
+    <section class="max-w-[1700px] mx-auto w-full px-6 pb-12">
+      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden shadow-2xl">
+        
+        <div class="bg-[#0c101c] px-6 py-4 border-b border-[#1e263d] flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded bg-emerald-950 border border-emerald-700/50 flex items-center justify-center text-emerald-400">
+              <i data-lucide="file-text" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-white">AI Attack Surface Intelligence Report</h3>
+              <p class="text-xs text-slate-400">Laporan analisis risiko terpadu digenerate otonom oleh n4n4ku AI Agent</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="copyReportBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-200 border border-slate-700 transition cursor-pointer">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>Copy Markdown</span>
+            </button>
+            <button id="downloadReportBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 text-xs font-mono text-slate-950 font-semibold transition cursor-pointer">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Download .md</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="p-6 md:p-8 overflow-x-auto min-h-[200px]" id="reportContainer">
+          <div class="text-slate-600 font-mono text-xs text-center py-12">
+            Laporan intelijen akan muncul dan ter-stream secara langsung di sini setelah probe lapangan selesai.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ==================================================== -->
+  <!-- VIEW 2: OWASP WSTG 4.2 AUDIT COCKPIT (INFORMATION GATHERING) -->
+  <!-- ==================================================== -->
+  <div id="wstgView" class="hidden flex-col flex-1">
+    
+    <!-- METRIC CARDS -->
+    <section class="max-w-[1700px] mx-auto w-full px-6 pt-6">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        
+        <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">WSTG-INFO Checklists</p>
+            <h3 id="wstgMetricTotal" class="text-2xl font-bold font-mono text-cyan-400 mt-1">10</h3>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-cyan-950/40 border border-cyan-800/50 flex items-center justify-center text-cyan-400">
+            <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+        <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Passed Controls</p>
+            <h3 id="wstgMetricPass" class="text-2xl font-bold font-mono text-emerald-400 mt-1">0</h3>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-emerald-950/40 border border-emerald-800/50 flex items-center justify-center text-emerald-400">
+            <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+        <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Failed Controls</p>
+            <h3 id="wstgMetricFail" class="text-2xl font-bold font-mono text-red-400 mt-1">0</h3>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-red-950/40 border border-red-800/50 flex items-center justify-center text-red-400">
+            <i data-lucide="alert-octagon" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+        <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl p-4 flex items-center justify-between">
+          <div>
+            <p class="text-xs uppercase tracking-wider text-slate-400 font-mono">Review / Attention</p>
+            <h3 id="wstgMetricReview" class="text-2xl font-bold font-mono text-amber-400 mt-1">0</h3>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-amber-950/40 border border-amber-800/50 flex items-center justify-center text-amber-400">
+            <i data-lucide="help-circle" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 3-PANEL WSTG COCKPIT -->
+    <main class="max-w-[1700px] mx-auto w-full px-6 py-6 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- PANEL 1: WSTG-INFO SUB-AGENT CHECKLIST MATRIX (Col 5) -->
+      <div class="lg:col-span-5 flex flex-col bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden min-h-[550px]">
+        
+        <div class="bg-[#0a0e19] px-4 py-3 border-b border-[#1e263d] flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <i data-lucide="shield-alert" class="w-4 h-4 text-cyan-400"></i>
+            <h4 class="font-mono text-xs font-semibold text-slate-300">WSTG 4.2 Information Gathering Checklist</h4>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">10 Sub-Agents</span>
+        </div>
+
+        <!-- Checklist List -->
+        <div id="wstgChecklistContainer" class="flex-1 overflow-y-auto max-h-[640px] divide-y divide-[#1e263d]/60 p-2 space-y-1.5 scrollbar-thin">
+          <!-- Dynamic Sub-Agent Cards Rendered via JS -->
+        </div>
+
+      </div>
+
+      <!-- PANEL 2: LIVE SUB-AGENT TELEMETRY TERMINAL (Col 4) -->
+      <div class="lg:col-span-4 flex flex-col bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden min-h-[550px]">
+        
+        <div class="bg-[#0a0e19] px-4 py-3 border-b border-[#1e263d] flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="flex gap-1.5">
+              <span class="w-3 h-3 rounded-full bg-cyan-500/80"></span>
+              <span class="w-3 h-3 rounded-full bg-blue-500/80"></span>
+              <span class="w-3 h-3 rounded-full bg-indigo-500/80"></span>
+            </div>
+            <span class="font-mono text-xs font-semibold text-slate-300 ml-2">subagents.telemetry.log</span>
+          </div>
+          <button id="wstgClearLogsBtn" class="text-[11px] font-mono text-slate-400 hover:text-slate-200 px-2 py-0.5 rounded bg-slate-800/50 hover:bg-slate-800 border border-slate-700">Clear</button>
+        </div>
+
+        <div id="wstgTerminalStream" class="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-2 max-h-[640px] scrollbar-thin">
+          <div class="text-slate-500 italic">
+            [WSTG-INFO] Sub-Agent Orchestrator standby. Masukkan Target URL dan klik 'Launch WSTG Audit'.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- PANEL 3: REALTIME FINDINGS & EVIDENCE LEDGER (Col 3) -->
+      <div class="lg:col-span-3 flex flex-col bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden min-h-[550px]">
+        
+        <div class="bg-[#0a0e19] px-4 py-3 border-b border-[#1e263d] flex items-center justify-between">
+          <h4 class="font-mono text-xs font-semibold text-slate-300 flex items-center gap-2">
+            <i data-lucide="file-search" class="w-4 h-4 text-amber-400"></i>
+            Audit Findings Ledger
+          </h4>
+          <span id="findingsCountBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">0 Items</span>
+        </div>
+
+        <div id="findingsContainer" class="flex-1 overflow-y-auto max-h-[640px] p-3 space-y-2.5 scrollbar-thin">
+          <div class="text-slate-600 font-mono text-xs text-center py-12">
+            Belum ada temuan audit tercatat.
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- WSTG EXECUTIVE REPORT DRAWER -->
+    <section class="max-w-[1700px] mx-auto w-full px-6 pb-12">
+      <div class="bg-[#0f1422] border border-[#1e263d] rounded-xl overflow-hidden shadow-2xl">
+        
+        <div class="bg-[#0c101c] px-6 py-4 border-b border-[#1e263d] flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded bg-cyan-950 border border-cyan-700/50 flex items-center justify-center text-cyan-400">
+              <i data-lucide="shield-check" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-white">OWASP WSTG v4.2 Information Gathering Security Report</h3>
+              <p class="text-xs text-slate-400">Laporan audit terpadu digenerate otonom oleh sub-agent WSTG 4.2</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="wstgCopyReportBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-xs font-mono text-slate-200 border border-slate-700 transition cursor-pointer">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>Copy Markdown</span>
+            </button>
+            <button id="wstgDownloadReportBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded bg-cyan-600 hover:bg-cyan-500 text-xs font-mono text-slate-950 font-semibold transition cursor-pointer">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Download .md</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="p-6 md:p-8 overflow-x-auto min-h-[200px]" id="wstgReportContainer">
+          <div class="text-slate-600 font-mono text-xs text-center py-12">
+            Laporan audit resmi OWASP WSTG v4.2 akan ter-stream secara langsung di sini setelah seluruh sub-agent selesai mengevaluasi target.
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </div>
+
+  <!-- CHECKLIST DETAILS MODAL -->
+  <div id="checklistModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-[#0f1422] border border-[#1e263d] rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+      <div class="bg-[#0a0e19] px-6 py-4 border-b border-[#1e263d] flex items-center justify-between">
+        <div>
+          <span id="modalIdBadge" class="text-xs font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">WSTG-INFO-00</span>
+          <h3 id="modalTitle" class="text-base font-bold text-white mt-1">Checklist Details</h3>
+        </div>
+        <button id="modalCloseBtn" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="modalBody" class="p-6 overflow-y-auto space-y-4 font-mono text-xs scrollbar-thin">
+        <!-- Injected via JS -->
+      </div>
     </div>
-  </section>
+  </div>
 
   <!-- APP SCRIPT -->
   <script src="/app.js"></script>
